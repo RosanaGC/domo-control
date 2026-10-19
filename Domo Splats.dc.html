@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#050408;color:#e9e6f0;font-family:'JetBrains Mono',ui-monospace,monospace}
+a{color:#9cff8a}a:hover{color:#c58bff}
+*{box-sizing:border-box}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-wrap:wrap;background:#050408">
+  <div ref="{{ stageRef }}" style="flex:1 1 480px;min-width:0;display:grid;place-items:center;padding:24px;background:#000">
+    <div style="position:relative;width:min(100%, calc(100vh - 48px));aspect-ratio:1">
+      <canvas ref="{{ canvasRef }}" width="2048" height="2048" style="width:100%;height:100%;display:block;background:#000;border-radius:50%"></canvas>
+      <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none">
+          <div style="font-size:11px;letter-spacing:0.2em;color:#b9b3c6">CARGANDO ESCENA</div>
+          <div style="width:180px;height:3px;background:#1a1720;border-radius:2px;overflow:hidden">
+            <div style="height:100%;width:{{ progressPct }};background:#9cff8a"></div>
+          </div>
+          <div style="font-size:11px;color:#8d879a">{{ progressText }}</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ guide }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;border-radius:50%;border:1px dashed rgba(233,230,240,0.25);pointer-events:none">
+          <div style="position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font-size:10px;letter-spacing:0.2em;color:rgba(233,230,240,0.45)">FRENTE ▼</div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+  <div style="flex:0 1 320px;min-width:260px;padding:28px 24px;display:flex;flex-direction:column;gap:28px;border-left:1px solid #1a1720">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:13px;font-weight:600;letter-spacing:0.08em">DOMO · GAUSSIAN SPLATS</div>
+      <div style="font-size:11px;color:#8d879a;line-height:1.5;text-wrap:pretty">Vuelo por una escena 3D real en domemaster 180°. Cada golpe de bajo empuja la cámara hacia adelante.</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:10px;letter-spacing:0.15em;color:#8d879a">ESCENA</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <sc-for list="{{ scenes }}" as="s" hint-placeholder-count="4">
+          <button onClick="{{ s.pick }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ s.bg }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">{{ s.label }}</button>
+        </sc-for>
+      </div>
+      <button onClick="{{ pickScene }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:transparent;border:1px dashed #3a3444;border-radius:4px;cursor:pointer">Cargar tu archivo (.splat / .ply)</button>
+      <input ref="{{ sceneFileRef }}" type="file" accept=".splat,.ply" onChange="{{ onSceneFile }}" style="display:none">
+      <div style="font-size:11px;color:#b9b3c6">{{ sceneStatus }}</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:10px;letter-spacing:0.15em;color:#8d879a">FUENTE DE AUDIO</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <button onClick="{{ useMic }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bgMic }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">Micrófono</button>
+        <button onClick="{{ pickFile }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bgFile }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">Archivo</button>
+        <button onClick="{{ useDemo }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bgDemo }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">Demo</button>
+      </div>
+      <input ref="{{ fileRef }}" type="file" accept="audio/*" onChange="{{ onFile }}" style="display:none">
+      <audio ref="{{ audioRef }}" controls="" style="width:100%;height:32px;display:{{ audioDisplay }}"></audio>
+      <div style="font-size:11px;color:#b9b3c6">{{ status }}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;height:6px;background:#1a1720;border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:{{ levelPct }};background:#c58bff"></div>
+        </div>
+        <div style="width:10px;height:10px;border-radius:50%;background:{{ beatColor }}"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:10px;letter-spacing:0.15em;color:#8d879a">RESOLUCIÓN</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <button onClick="{{ res1k }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bg1k }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">1024</button>
+        <button onClick="{{ res2k }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bg2k }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">2048</button>
+        <button onClick="{{ res4k }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bg4k }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">4096</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:10px;letter-spacing:0.15em;color:#8d879a">GRABAR</div>
+      <button onClick="{{ toggleRec }}" style="padding:12px;font:inherit;font-size:12px;font-weight:600;color:#050408;background:{{ recBg }};border:none;border-radius:4px;cursor:pointer">{{ recLabel }}</button>
+      <sc-if value="{{ downloadUrl }}" hint-placeholder-val="{{ false }}">
+        <a href="{{ downloadUrl }}" download="{{ downloadName }}" style="font-size:12px">Descargar {{ downloadName }}</a>
+      </sc-if>
+    </div>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button onClick="{{ fullscreen }}" style="flex:1;padding:10px;font:inherit;font-size:11px;color:#e9e6f0;background:transparent;border:1px solid #2a2532;border-radius:4px;cursor:pointer">Pantalla completa</button>
+      <button onClick="{{ toggleGuide }}" style="flex:1;padding:10px;font:inherit;font-size:11px;color:#e9e6f0;background:transparent;border:1px solid #2a2532;border-radius:4px;cursor:pointer">{{ guideLabel }}</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;speed&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0,&quot;max&quot;:4,&quot;step&quot;:0.1,&quot;section&quot;:&quot;Cámara&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;push&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0,&quot;max&quot;:3,&quot;step&quot;:0.1,&quot;section&quot;:&quot;Cámara&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;tilt&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:35,&quot;min&quot;:0,&quot;max&quot;:90,&quot;step&quot;:1,&quot;unit&quot;:&quot;°&quot;,&quot;section&quot;:&quot;Cámara&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;radius&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:0.45,&quot;min&quot;:0.05,&quot;max&quot;:2,&quot;step&quot;:0.05,&quot;section&quot;:&quot;Cámara&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;height&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:0.05,&quot;min&quot;:-1,&quot;max&quot;:1,&quot;step&quot;:0.01,&quot;section&quot;:&quot;Cámara&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;upAxis&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;-y&quot;,&quot;options&quot;:[&quot;-y&quot;,&quot;y&quot;,&quot;z&quot;,&quot;-z&quot;],&quot;section&quot;:&quot;Cámara&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;sensitivity&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1.3,&quot;min&quot;:1.05,&quot;max&quot;:2.2,&quot;step&quot;:0.05,&quot;section&quot;:&quot;Audio&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;demoBpm&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:120,&quot;min&quot;:60,&quot;max&quot;:200,&quot;section&quot;:&quot;Audio&quot;,&quot;tsType&quot;:&quot;number&quot;}}">
+const SPLAT_BASE = 'https://huggingface.co/cakewalk/splat-data/resolve/main/';
+const SCENES = [
+  { id: 'train', label: 'Tren', url: SPLAT_BASE + 'train.splat' },
+  { id: 'garden', label: 'Jardín', url: SPLAT_BASE + 'garden.splat' },
+  { id: 'truck', label: 'Camión', url: SPLAT_BASE + 'truck.splat' },
+  { id: 'bicycle', label: 'Bicicleta', url: SPLAT_BASE + 'bicycle.splat' }
+];
+
+const WORKER_SRC = `
+let buffer, N = 0, depthIndex = new Uint32Array();
+const fv = new Float32Array(1), iv = new Int32Array(fv.buffer);
+function h(f){fv[0]=f;let x=iv[0];let s=(x>>31)&1,e=(x>>23)&255,fr=x&0x7fffff,ne;
+ if(e==0)ne=0;else if(e<113){ne=0;fr|=0x800000;fr=fr>>(113-e);if(fr&0x1000000){ne=1;fr=0;}}else if(e<142)ne=e-112;else{ne=31;fr=0;}
+ return (s<<15)|(ne<<10)|(fr>>13);}
+function ph(a,b){return (h(a)|(h(b)<<16))>>>0;}
+function tex(){
+ const f=new Float32Array(buffer),u=new Uint8Array(buffer);
+ const w=2048,hh=Math.ceil(2*N/w);const td=new Uint32Array(w*hh*4),tc=new Uint8Array(td.buffer),tf=new Float32Array(td.buffer);
+ for(let i=0;i<N;i++){
+  tf[8*i]=f[8*i];tf[8*i+1]=f[8*i+1];tf[8*i+2]=f[8*i+2];
+  for(let k=0;k<4;k++)tc[4*(8*i+7)+k]=u[32*i+24+k];
+  const sc=[f[8*i+3],f[8*i+4],f[8*i+5]];
+  const r=[(u[32*i+28]-128)/128,(u[32*i+29]-128)/128,(u[32*i+30]-128)/128,(u[32*i+31]-128)/128];
+  const M=[1-2*(r[2]*r[2]+r[3]*r[3]),2*(r[1]*r[2]+r[0]*r[3]),2*(r[1]*r[3]-r[0]*r[2]),
+   2*(r[1]*r[2]-r[0]*r[3]),1-2*(r[1]*r[1]+r[3]*r[3]),2*(r[2]*r[3]+r[0]*r[1]),
+   2*(r[1]*r[3]+r[0]*r[2]),2*(r[2]*r[3]-r[0]*r[1]),1-2*(r[1]*r[1]+r[2]*r[2])].map((k,j)=>k*sc[Math.floor(j/3)]);
+  const s=[M[0]*M[0]+M[3]*M[3]+M[6]*M[6],M[0]*M[1]+M[3]*M[4]+M[6]*M[7],M[0]*M[2]+M[3]*M[5]+M[6]*M[8],
+   M[1]*M[1]+M[4]*M[4]+M[7]*M[7],M[1]*M[2]+M[4]*M[5]+M[7]*M[8],M[2]*M[2]+M[5]*M[5]+M[8]*M[8]];
+  td[8*i+4]=ph(4*s[0],4*s[1]);td[8*i+5]=ph(4*s[2],4*s[3]);td[8*i+6]=ph(4*s[4],4*s[5]);
+ }
+ self.postMessage({texdata:td,texwidth:w,texheight:hh},[td.buffer]);
+}
+function sort(c){
+ if(!buffer||!N){self.postMessage({depthIndex:new Uint32Array(),vertexCount:0});return;}
+ const f=new Float32Array(buffer);const d=new Float32Array(N);let mn=Infinity,mx=-Infinity;
+ for(let i=0;i<N;i++){const x=f[8*i]-c[0],y=f[8*i+1]-c[1],z=f[8*i+2]-c[2];const v=Math.sqrt(x*x+y*y+z*z);d[i]=v;if(v<mn)mn=v;if(v>mx)mx=v;}
+ const k=65535/((mx-mn)||1);const cnt=new Uint32Array(65536);const q=new Uint16Array(N);
+ for(let i=0;i<N;i++){const b=((d[i]-mn)*k)|0;q[i]=b;cnt[b]++;}
+ const st=new Uint32Array(65536);for(let i=1;i<65536;i++)st[i]=st[i-1]+cnt[i-1];
+ depthIndex=new Uint32Array(N);for(let i=0;i<N;i++)depthIndex[st[q[i]]++]=i;
+ self.postMessage({depthIndex,vertexCount:N},[depthIndex.buffer]);
+}
+self.onmessage=e=>{
+ if(e.data.buffer){buffer=e.data.buffer;N=e.data.vertexCount;tex();}
+ else if(e.data.cam){sort(e.data.cam);}
+};`;
+
+const VS = `#version 300 es
+precision highp float;precision highp int;
+uniform highp usampler2D u_texture;uniform mat4 view;uniform vec2 viewport;uniform float kfish;uniform float nearD;
+in vec2 position;in int index;out vec4 vColor;out vec2 vPosition;
+vec2 fish(vec3 p){float rho=length(p.xy);float th=atan(rho,p.z);return rho>1e-7?p.xy*(kfish*th/rho):p.xy*(kfish/max(p.z,1e-7));}
+void main(){
+ uvec4 cen=texelFetch(u_texture,ivec2((uint(index)&0x3ffu)<<1,uint(index)>>10),0);
+ vec3 p=(view*vec4(uintBitsToFloat(cen.xyz),1.)).xyz;
+ float L=length(p);float th=atan(length(p.xy),p.z);
+ if(th*kfish>1.08||L<nearD){gl_Position=vec4(0.,0.,2.,1.);return;}
+ vec2 c=fish(p);float e=L*1e-3;
+ vec2 jx=(fish(p+vec3(e,0.,0.))-c)/e,jy=(fish(p+vec3(0.,e,0.))-c)/e,jz=(fish(p+vec3(0.,0.,e))-c)/e;
+ vec2 hv=viewport*0.5;
+ mat3 J=mat3(jx.x*hv.x,jy.x*hv.x,jz.x*hv.x, jx.y*hv.y,jy.y*hv.y,jz.y*hv.y, 0.,0.,0.);
+ uvec4 cov=texelFetch(u_texture,ivec2(((uint(index)&0x3ffu)<<1)|1u,uint(index)>>10),0);
+ vec2 u1=unpackHalf2x16(cov.x),u2=unpackHalf2x16(cov.y),u3=unpackHalf2x16(cov.z);
+ mat3 Vrk=mat3(u1.x,u1.y,u2.x,u1.y,u2.y,u3.x,u2.x,u3.x,u3.y);
+ mat3 T=transpose(mat3(view))*J;mat3 c2=transpose(T)*Vrk*T;
+ float d1=c2[0][0]+0.3,od=c2[0][1],d2=c2[1][1]+0.3;
+ float mid=0.5*(d1+d2),rad=length(vec2((d1-d2)/2.,od));float l1=mid+rad,l2=max(mid-rad,0.1);
+ vec2 dv=normalize(vec2(od,l1-d1));
+ vec2 ma=min(sqrt(2.*l1),1024.)*dv,mi=min(sqrt(2.*l2),1024.)*vec2(dv.y,-dv.x);
+ vColor=vec4(cov.w&0xffu,(cov.w>>8)&0xffu,(cov.w>>16)&0xffu,(cov.w>>24)&0xffu)/255.;
+ vColor.a*=smoothstep(nearD,nearD*4.,L);
+ vPosition=position;
+ gl_Position=vec4(c+position.x*ma/viewport+position.y*mi/viewport,0.,1.);
+}`;
+const FS = `#version 300 es
+precision highp float;uniform vec2 viewport;in vec4 vColor;in vec2 vPosition;out vec4 fragColor;
+void main(){
+ if(length(gl_FragCoord.xy/viewport*2.-1.)>1.)discard;
+ float A=-dot(vPosition,vPosition);if(A<-4.)discard;float B=exp(A)*vColor.a;fragColor=vec4(B*vColor.rgb,B);
+}`;
+
+class Component extends DCLogic {
+  state = { source: 'demo', status: 'Demo a 120 BPM', res: 2048, recording: false, recTime: 0, downloadUrl: null, guide: true, level: 0, beatOn: false,
+    scene: 'train', sceneStatus: '', loading: false, progress: 0 };
+  canvasRef = React.createRef(); fileRef = React.createRef(); audioRef = React.createRef(); stageRef = React.createRef(); sceneFileRef = React.createRef();
+  hist = []; lastBeat = 0; demoIdx = 0; frame = 0; vertexCount = 0; sorting = false; pathA = 0; boost = 0; punch = 0; loadId = 0;
+
+  componentDidMount() {
+    this.S = 2048;
+    this.initGL();
+    this.last = performance.now();
+    this.demoNext = this.last + 400;
+    const tick = () => { this.step(); this.raf = requestAnimationFrame(tick); };
+    this.raf = requestAnimationFrame(tick);
+    this.loadUrl(SCENES[0]);
+  }
+  componentWillUnmount() {
+    cancelAnimationFrame(this.raf);
+    if (this.worker) this.worker.terminate();
+    if (this.micStream) this.micStream.getTracks().forEach(t => t.stop());
+    if (this.ac) this.ac.close();
+  }
+
+  initGL() {
+    const c = this.canvasRef.current;
+    const gl = c.getContext('webgl2', { antialias: false, premultipliedAlpha: true });
+    if (!gl) { this.setState({ sceneStatus: 'Este navegador no soporta WebGL2' }); return; }
+    this.gl = gl;
+    const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(o)); return o; };
+    const pr = gl.createProgram();
+    gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(pr));
+    gl.useProgram(pr); this.pr = pr;
+    gl.disable(gl.DEPTH_TEST); gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(gl.ONE_MINUS_DST_ALPHA, gl.ONE, gl.ONE_MINUS_DST_ALPHA, gl.ONE);
+    gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
+    this.u = { view: gl.getUniformLocation(pr, 'view'), viewport: gl.getUniformLocation(pr, 'viewport'), kfish: gl.getUniformLocation(pr, 'kfish'), nearD: gl.getUniformLocation(pr, 'nearD'), tex: gl.getUniformLocation(pr, 'u_texture') };
+    const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-2, -2, 2, -2, 2, 2, -2, 2]), gl.STATIC_DRAW);
+    const ap = gl.getAttribLocation(pr, 'position'); gl.enableVertexAttribArray(ap); gl.vertexAttribPointer(ap, 2, gl.FLOAT, false, 0, 0);
+    this.texture = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, this.texture);
+    [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T].forEach(p => gl.texParameteri(gl.TEXTURE_2D, p, gl.CLAMP_TO_EDGE));
+    [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER].forEach(p => gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST));
+    gl.uniform1i(this.u.tex, 0);
+    this.ib = gl.createBuffer(); const ai = gl.getAttribLocation(pr, 'index');
+    gl.enableVertexAttribArray(ai); gl.bindBuffer(gl.ARRAY_BUFFER, this.ib);
+    gl.vertexAttribIPointer(ai, 1, gl.INT, false, 0, 0); gl.vertexAttribDivisor(ai, 1);
+    this.worker = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: 'application/javascript' })));
+    this.worker.onmessage = e => {
+      const d = e.data;
+      if (d.texdata) {
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32UI, d.texwidth, d.texheight, 0, gl.RGBA_INTEGER, gl.UNSIGNED_INT, d.texdata);
+      } else if (d.depthIndex) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.ib); gl.bufferData(gl.ARRAY_BUFFER, d.depthIndex, gl.DYNAMIC_DRAW);
+        this.vertexCount = d.vertexCount; this.sorting = false;
+      }
+    };
+  }
+
+  sendBuffer(u8, n) {
+    const buf = u8.buffer.slice(0, n * 32);
+    this.computeStats(new Float32Array(buf), n);
+    this.worker.postMessage({ buffer: buf, vertexCount: n }, [buf]);
+    this.sorting = false;
+  }
+  computeStats(f, n) {
+    const m = Math.min(n, 30000), xs = [], ys = [], zs = [];
+    for (let j = 0; j < m; j++) { const i = Math.floor(j * n / m); xs.push(f[8 * i]); ys.push(f[8 * i + 1]); zs.push(f[8 * i + 2]); }
+    const med = a => a.slice().sort((p, q) => p - q)[a.length >> 1];
+    const C = [med(xs), med(ys), med(zs)];
+    const ds = xs.map((x, j) => Math.hypot(x - C[0], ys[j] - C[1], zs[j] - C[2]));
+    this.stats = { C, s: med(ds) || 1 };
+  }
+
+  async loadUrl(sc) {
+    const id = ++this.loadId;
+    this.setState({ scene: sc.id, loading: true, progress: 0, sceneStatus: 'Descargando ' + sc.label + '…' });
+    try {
+      const res = await fetch(sc.url);
+      if (!res.ok) throw new Error(res.status);
+      const total = +res.headers.get('content-length') || 0;
+      const reader = res.body.getReader();
+      let data = new Uint8Array(total || 32 * 1024 * 1024), got = 0, lastSent = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (id !== this.loadId) { reader.cancel(); return; }
+        if (done) break;
+        if (got + value.length > data.length) { const nd = new Uint8Array(Math.max(data.length * 2, got + value.length)); nd.set(data.subarray(0, got)); data = nd; }
+        data.set(value, got); got += value.length;
+        if (total) this.setState({ progress: got / total });
+        if (got - lastSent > Math.max(8e6, total * 0.2)) { lastSent = got; this.sendBuffer(data, Math.floor(got / 32)); }
+      }
+      this.sendBuffer(data, Math.floor(got / 32));
+      this.setState({ loading: false, sceneStatus: sc.label + ' · ' + Math.floor(got / 32).toLocaleString('es') + ' splats' });
+    } catch (e) {
+      if (id === this.loadId) this.setState({ loading: false, sceneStatus: 'No se pudo descargar la escena (' + e.message + ')' });
+    }
+  }
+  async onSceneFile(e) {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    e.target.value = '';
+    const id = ++this.loadId;
+    this.setState({ scene: 'file', loading: true, progress: 0.5, sceneStatus: 'Leyendo ' + f.name + '…' });
+    try {
+      const ab = await f.arrayBuffer();
+      if (id !== this.loadId) return;
+      const head = new TextDecoder().decode(new Uint8Array(ab, 0, Math.min(4, ab.byteLength)));
+      const u8 = head === 'ply\n' || head.startsWith('ply') ? this.parsePly(ab) : new Uint8Array(ab);
+      const n = Math.floor(u8.byteLength / 32);
+      this.sendBuffer(u8, n);
+      this.setState({ loading: false, sceneStatus: f.name + ' · ' + n.toLocaleString('es') + ' splats' });
+    } catch (err) {
+      this.setState({ loading: false, sceneStatus: 'Archivo no válido: ' + err.message });
+    }
+  }
+  parsePly(ab) {
+    const txt = new TextDecoder().decode(new Uint8Array(ab, 0, Math.min(ab.byteLength, 65536)));
+    const end = 'end_header\n', hi = txt.indexOf(end);
+    if (hi < 0) throw new Error('cabecera PLY');
+    if (!/format binary_little_endian/.test(txt)) throw new Error('solo PLY binario');
+    const SZ = { double: 8, float64: 8, int: 4, int32: 4, uint: 4, uint32: 4, float: 4, float32: 4, short: 2, int16: 2, ushort: 2, uint16: 2, uchar: 1, uint8: 1, char: 1, int8: 1 };
+    const GT = { double: 'getFloat64', float64: 'getFloat64', int: 'getInt32', int32: 'getInt32', uint: 'getUint32', uint32: 'getUint32', float: 'getFloat32', float32: 'getFloat32', short: 'getInt16', int16: 'getInt16', ushort: 'getUint16', uint16: 'getUint16', uchar: 'getUint8', uint8: 'getUint8', char: 'getInt8', int8: 'getInt8' };
+    let el = null, N = 0, row = 0; const P = {};
+    for (const ln of txt.slice(0, hi).split('\n')) {
+      const t = ln.trim().split(/\s+/);
+      if (t[0] === 'element') { el = t[1]; if (el === 'vertex') N = +t[2]; }
+      else if (t[0] === 'property' && el === 'vertex') { P[t[2]] = { o: row, g: GT[t[1]] }; row += SZ[t[1]]; }
+    }
+    const dv = new DataView(ab, hi + end.length);
+    const out = new ArrayBuffer(32 * N), of = new Float32Array(out), ou = new Uint8Array(out);
+    const rd = (k, i, d) => P[k] ? dv[P[k].g](i * row + P[k].o, true) : d;
+    const C0 = 0.28209479177387814, cl = v => Math.max(0, Math.min(255, v));
+    for (let i = 0; i < N; i++) {
+      of[8 * i] = rd('x', i, 0); of[8 * i + 1] = rd('y', i, 0); of[8 * i + 2] = rd('z', i, 0);
+      if (P.scale_0) { of[8 * i + 3] = Math.exp(rd('scale_0', i)); of[8 * i + 4] = Math.exp(rd('scale_1', i)); of[8 * i + 5] = Math.exp(rd('scale_2', i)); }
+      else { of[8 * i + 3] = of[8 * i + 4] = of[8 * i + 5] = 0.01; }
+      if (P.f_dc_0) { ou[32 * i + 24] = cl((0.5 + C0 * rd('f_dc_0', i)) * 255); ou[32 * i + 25] = cl((0.5 + C0 * rd('f_dc_1', i)) * 255); ou[32 * i + 26] = cl((0.5 + C0 * rd('f_dc_2', i)) * 255); }
+      else { ou[32 * i + 24] = rd('red', i, 255); ou[32 * i + 25] = rd('green', i, 255); ou[32 * i + 26] = rd('blue', i, 255); }
+      ou[32 * i + 27] = P.opacity ? cl((1 / (1 + Math.exp(-rd('opacity', i)))) * 255) : 255;
+      let q = [rd('rot_0', i, 1), rd('rot_1', i, 0), rd('rot_2', i, 0), rd('rot_3', i, 0)];
+      const l = Math.hypot(q[0], q[1], q[2], q[3]) || 1;
+      for (let k = 0; k < 4; k++) ou[32 * i + 28 + k] = cl(q[k] / l * 128 + 128);
+    }
+    return ou;
+  }
+
+  ensureCtx() {
+    if (!this.ac) {
+      this.ac = new (window.AudioContext || window.webkitAudioContext)();
+      this.an = this.ac.createAnalyser(); this.an.fftSize = 2048; this.an.smoothingTimeConstant = 0.4;
+      this.freq = new Uint8Array(this.an.frequencyBinCount);
+      this.dest = this.ac.createMediaStreamDestination();
+    }
+    this.ac.resume();
+  }
+  disconnectSrc() {
+    if (this.curSrc) { try { this.curSrc.disconnect(); } catch (e) {} this.curSrc = null; }
+    if (this.micStream) { this.micStream.getTracks().forEach(t => t.stop()); this.micStream = null; }
+    const a = this.audioRef.current; if (a && this.state.source === 'file') a.pause();
+  }
+  async useMic() {
+    try {
+      this.ensureCtx(); this.disconnectSrc();
+      this.micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      const src = this.ac.createMediaStreamSource(this.micStream);
+      src.connect(this.an); src.connect(this.dest); this.curSrc = src; this.hist = [];
+      this.setState({ source: 'mic', status: 'Escuchando micrófono' });
+    } catch (e) { this.setState({ status: 'No se pudo abrir el micrófono' }); }
+  }
+  onFile(e) {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    this.ensureCtx(); this.disconnectSrc();
+    const a = this.audioRef.current;
+    a.src = URL.createObjectURL(f);
+    if (!this.elSrc) this.elSrc = this.ac.createMediaElementSource(a);
+    this.elSrc.connect(this.an); this.elSrc.connect(this.ac.destination); this.elSrc.connect(this.dest);
+    this.curSrc = this.elSrc; this.hist = [];
+    a.play();
+    this.setState({ source: 'file', status: f.name });
+    e.target.value = '';
+  }
+  useDemo() { this.disconnectSrc(); this.demoNext = performance.now() + 200; this.setState({ source: 'demo', status: 'Demo a ' + this.bpm() + ' BPM' }); }
+  bpm() { return this.props.demoBpm ?? 120; }
+
+  setRes(n) {
+    if (this.state.recording) return;
+    const c = this.canvasRef.current; c.width = c.height = n; this.S = n;
+    this.setState({ res: n });
+  }
+  toggleRec() {
+    if (this.state.recording) { this.rec.stop(); return; }
+    const stream = this.canvasRef.current.captureStream(60);
+    if (this.dest && this.state.source !== 'demo') this.dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+    const mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'].find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+    const chunks = [];
+    this.rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: this.S >= 4096 ? 60e6 : this.S >= 2048 ? 25e6 : 10e6 });
+    this.rec.ondataavailable = ev => { if (ev.data.size) chunks.push(ev.data); };
+    this.rec.onstop = () => {
+      const blob = new Blob(chunks, { type: mime });
+      if (this.state.downloadUrl) URL.revokeObjectURL(this.state.downloadUrl);
+      this.setState({ recording: false, downloadUrl: URL.createObjectURL(blob), downloadName: 'domo-splats-' + this.S + (mime.includes('mp4') ? '.mp4' : '.webm') });
+    };
+    this.rec.start(1000); this.recStart = performance.now();
+    this.setState({ recording: true, downloadUrl: null });
+  }
+  fullscreen() { const el = this.stageRef.current; if (document.fullscreenElement) document.exitFullscreen(); else if (el.requestFullscreen) el.requestFullscreen(); }
+
+  band(lo, hi) {
+    const bin = this.ac.sampleRate / this.an.fftSize;
+    const a = Math.max(1, Math.floor(lo / bin)), b = Math.max(a + 1, Math.floor(hi / bin));
+    let s = 0; for (let i = a; i < b; i++) s += this.freq[i];
+    return s / (b - a) / 255;
+  }
+  analyze(now) {
+    if (this.state.source === 'demo' || !this.an) {
+      const iv = 60000 / this.bpm();
+      let beat = false, strength = 0;
+      if (now >= this.demoNext) {
+        beat = true; strength = this.demoIdx % 4 === 0 ? 2.4 : this.demoIdx % 2 === 0 ? 1.7 : 1.35;
+        this.demoIdx++; this.lastDemo = now; this.demoNext += iv; if (now > this.demoNext) this.demoNext = now + iv;
+      }
+      return { bass: Math.exp(-(now - (this.lastDemo || 0)) / 160), beat, strength };
+    }
+    this.an.getByteFrequencyData(this.freq);
+    const bass = this.band(30, 150);
+    const h = this.hist; const avg = h.length ? h.reduce((a, b) => a + b, 0) / h.length : bass;
+    h.push(bass); if (h.length > 43) h.shift();
+    const sens = this.props.sensitivity ?? 1.3;
+    let beat = false, strength = 0;
+    if (h.length > 10 && bass > avg * sens && bass > 0.18 && now - this.lastBeat > 200) {
+      beat = true; strength = Math.min(3, 1 + (bass / Math.max(avg, 0.01) - 1) * 2.2 + bass);
+    }
+    return { bass, beat, strength };
+  }
+
+  upVec() {
+    const m = { '-y': [0, -1, 0], 'y': [0, 1, 0], 'z': [0, 0, 1], '-z': [0, 0, -1] };
+    return m[this.props.upAxis ?? '-y'] || m['-y'];
+  }
+  camera(dt) {
+    const st = this.stats; if (!st) return null;
+    const up = this.upVec();
+    const nrm = v => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+    const cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const a1 = nrm(cr(up, Math.abs(up[0]) < 0.9 ? [1, 0, 0] : [0, 0, 1])), a2 = cr(up, a1);
+    const R = (this.props.radius ?? 0.45) * st.s, H = (this.props.height ?? 0.05) * st.s;
+    const speed = (this.props.speed ?? 1) * 0.04, push = this.props.push ?? 1;
+    this.pathA += dt * (speed + this.boost * 0.35 * push);
+    this.boost *= Math.exp(-dt * 3.2); this.punch *= Math.exp(-dt * 6);
+    const a = this.pathA, rr = R * (1 + 0.25 * Math.sin(a * 2.3));
+    const rad = [Math.cos(a) * a1[0] + Math.sin(a) * a2[0], Math.cos(a) * a1[1] + Math.sin(a) * a2[1], Math.cos(a) * a1[2] + Math.sin(a) * a2[2]];
+    const tan = [-Math.sin(a) * a1[0] + Math.cos(a) * a2[0], -Math.sin(a) * a1[1] + Math.cos(a) * a2[1], -Math.sin(a) * a1[2] + Math.cos(a) * a2[2]];
+    const hh = H + st.s * 0.04 * Math.sin(a * 3.1);
+    const P = [0, 1, 2].map(i => st.C[i] + rad[i] * rr + up[i] * hh);
+    const inw = 0.45;
+    const look = nrm([0, 1, 2].map(i => tan[i] * Math.cos(inw) - rad[i] * Math.sin(inw)));
+    const tl = (this.props.tilt ?? 35) * Math.PI / 180;
+    const f = nrm([0, 1, 2].map(i => look[i] * Math.cos(tl) + up[i] * Math.sin(tl)));
+    const u = nrm([0, 1, 2].map(i => -look[i] * Math.sin(tl) + up[i] * Math.cos(tl)));
+    const r = cr(f, u);
+    const d = (x, y) => x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
+    return { P, view: [r[0], u[0], f[0], 0, r[1], u[1], f[1], 0, r[2], u[2], f[2], 0, -d(r, P), -d(u, P), -d(f, P), 1] };
+  }
+
+  step() {
+    const gl = this.gl; if (!gl) return;
+    const now = performance.now(), dt = Math.min(0.05, (now - this.last) / 1000); this.last = now;
+    const au = this.analyze(now);
+    if (au.beat) { this.lastBeat = now; this.boost += au.strength; this.punch = Math.min(1, this.punch + au.strength * 0.25); }
+    const S = this.S;
+    gl.viewport(0, 0, S, S); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    const cam = this.camera(dt);
+    if (cam && this.vertexCount > 0) {
+      gl.uniformMatrix4fv(this.u.view, false, new Float32Array(cam.view));
+      gl.uniform2f(this.u.viewport, S, S);
+      gl.uniform1f(this.u.kfish, (2 / Math.PI) * (1 + this.punch * 0.18 * (this.props.push ?? 1)));
+      gl.uniform1f(this.u.nearD, this.stats.s * 0.004);
+      gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, this.vertexCount);
+    }
+    if (cam && !this.sorting) { this.sorting = true; this.worker.postMessage({ cam: cam.P }); }
+    if (++this.frame % 5 === 0) {
+      this.setState({ level: au.bass, beatOn: now - this.lastBeat < 140, recTime: this.state.recording ? (now - this.recStart) / 1000 : 0 });
+    }
+  }
+
+  renderVals() {
+    const s = this.state, on = '#2a2236', off = 'transparent';
+    const t = Math.floor(s.recTime), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, '0');
+    return {
+      canvasRef: this.canvasRef, fileRef: this.fileRef, audioRef: this.audioRef, stageRef: this.stageRef, sceneFileRef: this.sceneFileRef,
+      scenes: SCENES.map(sc => ({ label: sc.label, bg: s.scene === sc.id ? on : off, pick: () => this.loadUrl(sc) })),
+      pickScene: () => this.sceneFileRef.current && this.sceneFileRef.current.click(), onSceneFile: e => this.onSceneFile(e),
+      sceneStatus: s.sceneStatus, loading: s.loading, progressPct: Math.round(s.progress * 100) + '%', progressText: s.progress ? Math.round(s.progress * 100) + '%' : '',
+      useMic: () => this.useMic(), pickFile: () => this.fileRef.current && this.fileRef.current.click(), onFile: e => this.onFile(e), useDemo: () => this.useDemo(),
+      bgMic: s.source === 'mic' ? on : off, bgFile: s.source === 'file' ? on : off, bgDemo: s.source === 'demo' ? on : off,
+      audioDisplay: s.source === 'file' ? 'block' : 'none',
+      status: s.status, levelPct: Math.round(Math.min(1, s.level) * 100) + '%', beatColor: s.beatOn ? '#9cff8a' : '#2a2532',
+      res1k: () => this.setRes(1024), res2k: () => this.setRes(2048), res4k: () => this.setRes(4096),
+      bg1k: s.res === 1024 ? on : off, bg2k: s.res === 2048 ? on : off, bg4k: s.res === 4096 ? on : off,
+      toggleRec: () => this.toggleRec(), recBg: s.recording ? '#ff6a6a' : '#9cff8a',
+      recLabel: s.recording ? 'Detener · ' + mm + ':' + ss : 'Grabar',
+      downloadUrl: s.downloadUrl, downloadName: s.downloadName,
+      fullscreen: () => this.fullscreen(), guide: s.guide, toggleGuide: () => this.setState({ guide: !s.guide }), guideLabel: s.guide ? 'Ocultar guía' : 'Mostrar guía'
+    };
+  }
+}
+</script>
+</body>
+</html>

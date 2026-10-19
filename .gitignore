@@ -1,0 +1,14 @@
+# Escenas de splats y videos: pesados, no van al repo
+escenas/
+*.splat
+*.ply
+*.webm
+*.mp4
+*.mov
+*.wav
+*.mp3
+
+# Fotos personales y basura del sistema
+*.jpeg
+*.jpg
+.DS_Store

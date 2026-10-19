@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#050408;color:#e9e6f0;font-family:'JetBrains Mono',ui-monospace,monospace}
+a{color:#9cff8a}a:hover{color:#c58bff}
+*{box-sizing:border-box}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-wrap:wrap;background:#050408">
+  <div ref="{{ stageRef }}" style="flex:1 1 480px;min-width:0;display:grid;place-items:center;padding:24px;background:#000">
+    <div style="position:relative;width:min(100%, calc(100vh - 48px));aspect-ratio:1">
+      <canvas ref="{{ canvasRef }}" width="2048" height="2048" style="width:100%;height:100%;display:block;background:#000;border-radius:50%"></canvas>
+      <sc-if value="{{ empty }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;display:grid;place-items:center;pointer-events:none">
+          <div style="font-size:11px;letter-spacing:0.2em;color:#8d879a">CARGA UN VIDEO →</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ guide }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;border-radius:50%;border:1px dashed rgba(233,230,240,0.25);pointer-events:none">
+          <div style="position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font-size:10px;letter-spacing:0.2em;color:rgba(233,230,240,0.45)">FRENTE ▼</div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+  <div style="flex:0 1 320px;min-width:260px;padding:28px 24px;display:flex;flex-direction:column;gap:28px;border-left:1px solid #1a1720">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:13px;font-weight:600;letter-spacing:0.08em">DOMO · VIDEO REACTIVO</div>
+      <div style="font-size:11px;color:#8d879a;line-height:1.5;text-wrap:pretty">Tu video en domemaster 180°, con zoom, destellos, giro y separación de color al ritmo de la música.</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:10px;letter-spacing:0.15em;color:#8d879a">VIDEO</div>
+      <button onClick="{{ pickVideo }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:transparent;border:1px dashed #3a3444;border-radius:4px;cursor:pointer">Cargar video</button>
+      <input ref="{{ videoFileRef }}" type="file" accept="video/*" onChange="{{ onVideoFile }}" style="display:none">
+      <video ref="{{ videoRef }}" controls="" style="width:100%;border-radius:4px;background:#0c0a10;display:{{ videoDisplay }}"></video>
+      <div style="font-size:11px;color:#b9b3c6">{{ videoStatus }}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <button onClick="{{ modeFish }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bgFish }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">Fisheye</button>
+        <button onClick="{{ modeFlat }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bgFlat }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">Normal</button>
+        <button onClick="{{ modeEq }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bgEq }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">360°</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:10px;letter-spacing:0.15em;color:#8d879a">AUDIO QUE MANDA</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button onClick="{{ useMic }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bgMic }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">Micrófono</button>
+        <button onClick="{{ pickFile }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bgFile }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">Archivo</button>
+        <button onClick="{{ useVideoAudio }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bgVid }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">Del video</button>
+        <button onClick="{{ useDemo }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bgDemo }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">Demo</button>
+      </div>
+      <input ref="{{ fileRef }}" type="file" accept="audio/*" onChange="{{ onFile }}" style="display:none">
+      <audio ref="{{ audioRef }}" controls="" style="width:100%;height:32px;display:{{ audioDisplay }}"></audio>
+      <div style="font-size:11px;color:#b9b3c6">{{ status }}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;height:6px;background:#1a1720;border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:{{ levelPct }};background:#c58bff"></div>
+        </div>
+        <div style="width:10px;height:10px;border-radius:50%;background:{{ beatColor }}"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:10px;letter-spacing:0.15em;color:#8d879a">RESOLUCIÓN</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <button onClick="{{ res1k }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bg1k }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">1024</button>
+        <button onClick="{{ res2k }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bg2k }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">2048</button>
+        <button onClick="{{ res4k }}" style="padding:10px 4px;font:inherit;font-size:11px;color:#e9e6f0;background:{{ bg4k }};border:1px solid #2a2532;border-radius:4px;cursor:pointer">4096</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:10px;letter-spacing:0.15em;color:#8d879a">GRABAR</div>
+      <button onClick="{{ toggleRec }}" style="padding:12px;font:inherit;font-size:12px;font-weight:600;color:#050408;background:{{ recBg }};border:none;border-radius:4px;cursor:pointer">{{ recLabel }}</button>
+      <sc-if value="{{ downloadUrl }}" hint-placeholder-val="{{ false }}">
+        <a href="{{ downloadUrl }}" download="{{ downloadName }}" style="font-size:12px">Descargar {{ downloadName }}</a>
+      </sc-if>
+    </div>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button onClick="{{ fullscreen }}" style="flex:1;padding:10px;font:inherit;font-size:11px;color:#e9e6f0;background:transparent;border:1px solid #2a2532;border-radius:4px;cursor:pointer">Pantalla completa</button>
+      <button onClick="{{ toggleGuide }}" style="flex:1;padding:10px;font:inherit;font-size:11px;color:#e9e6f0;background:transparent;border:1px solid #2a2532;border-radius:4px;cursor:pointer">{{ guideLabel }}</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;intensity&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0,&quot;max&quot;:3,&quot;step&quot;:0.1,&quot;section&quot;:&quot;Efectos&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;zoomFx&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;section&quot;:&quot;Efectos&quot;,&quot;tsType&quot;:&quot;boolean&quot;},&quot;flashFx&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;section&quot;:&quot;Efectos&quot;,&quot;tsType&quot;:&quot;boolean&quot;},&quot;rgbFx&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;section&quot;:&quot;Efectos&quot;,&quot;tsType&quot;:&quot;boolean&quot;},&quot;rotateFx&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;section&quot;:&quot;Efectos&quot;,&quot;tsType&quot;:&quot;boolean&quot;},&quot;rateFx&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;section&quot;:&quot;Efectos&quot;,&quot;tsType&quot;:&quot;boolean&quot;},&quot;spin&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:0.02,&quot;min&quot;:-0.3,&quot;max&quot;:0.3,&quot;step&quot;:0.01,&quot;section&quot;:&quot;Efectos&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;flatFov&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:140,&quot;min&quot;:60,&quot;max&quot;:220,&quot;step&quot;:5,&quot;unit&quot;:&quot;°&quot;,&quot;section&quot;:&quot;Video normal&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;flatElev&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:25,&quot;min&quot;:0,&quot;max&quot;:80,&quot;step&quot;:1,&quot;unit&quot;:&quot;°&quot;,&quot;section&quot;:&quot;Video normal&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;sensitivity&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1.3,&quot;min&quot;:1.05,&quot;max&quot;:2.2,&quot;step&quot;:0.05,&quot;section&quot;:&quot;Audio&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;demoBpm&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:120,&quot;min&quot;:60,&quot;max&quot;:200,&quot;section&quot;:&quot;Audio&quot;,&quot;tsType&quot;:&quot;number&quot;}}">
+const FS = `precision highp float;
+uniform sampler2D tex;uniform vec2 res;uniform int mode;uniform float zoom,rot,flash,split,aspect,flatFov,flatElev;
+vec3 samp(vec2 p){
+ vec2 uv;
+ if(mode==0){uv=p*0.5+0.5;}
+ else{float th=length(p)*1.5707963;float ph=atan(p.x,-p.y);float lat=1.5707963-th;
+  if(mode==1){uv=vec2(ph/6.2831853+0.5,lat/3.14159265+0.5);}
+  else{uv=vec2(ph/flatFov+0.5,(lat-flatElev)/(flatFov/aspect)+0.5);}}
+ if(uv.x<0.||uv.x>1.||uv.y<0.||uv.y>1.)return vec3(0.);
+ return texture2D(tex,uv).rgb;
+}
+void main(){
+ vec2 p=(gl_FragCoord.xy/res)*2.-1.;
+ if(length(p)>1.){gl_FragColor=vec4(0.,0.,0.,1.);return;}
+ float c=cos(rot),s=sin(rot);p=mat2(c,-s,s,c)*p;p/=zoom;
+ vec3 col=vec3(samp(p*(1.+split)).r,samp(p).g,samp(p*(1.-split)).b);
+ col+=flash*vec3(0.85,0.75,1.0);
+ gl_FragColor=vec4(col,1.);
+}`;
+const VS = `attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}`;
+
+class Component extends DCLogic {
+  state = { source: 'demo', status: 'Demo a 120 BPM', res: 2048, recording: false, recTime: 0, downloadUrl: null, guide: true, level: 0, beatOn: false,
+    mode: 0, hasVideo: false, videoStatus: 'Sin video' };
+  canvasRef = React.createRef(); fileRef = React.createRef(); audioRef = React.createRef(); stageRef = React.createRef(); videoRef = React.createRef(); videoFileRef = React.createRef();
+  hist = []; lastBeat = 0; demoIdx = 0; frame = 0; zoomK = 0; flashK = 0; splitK = 0; rot = 0; rotVel = 0; energy = 0;
+
+  componentDidMount() {
+    this.S = 2048;
+    const vv = this.videoRef.current; vv.muted = true; vv.loop = true; vv.playsInline = true;
+    this.initGL();
+    this.last = performance.now();
+    this.demoNext = this.last + 400;
+    const tick = () => { this.step(); this.raf = requestAnimationFrame(tick); };
+    this.raf = requestAnimationFrame(tick);
+  }
+  componentWillUnmount() {
+    cancelAnimationFrame(this.raf);
+    if (this.micStream) this.micStream.getTracks().forEach(t => t.stop());
+    if (this.ac) this.ac.close();
+  }
+
+  initGL() {
+    const gl = this.canvasRef.current.getContext('webgl', { antialias: false });
+    if (!gl) { this.setState({ videoStatus: 'Este navegador no soporta WebGL' }); return; }
+    this.gl = gl;
+    const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(o)); return o; };
+    const pr = gl.createProgram();
+    gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); gl.useProgram(pr);
+    const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const la = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(la); gl.vertexAttribPointer(la, 2, gl.FLOAT, false, 0, 0);
+    this.u = {}; ['tex', 'res', 'mode', 'zoom', 'rot', 'flash', 'split', 'aspect', 'flatFov', 'flatElev'].forEach(n => this.u[n] = gl.getUniformLocation(pr, n));
+    this.tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, this.tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.uniform1i(this.u.tex, 0);
+  }
+
+  onVideoFile(e) {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    e.target.value = '';
+    const v = this.videoRef.current;
+    if (this.videoUrl) URL.revokeObjectURL(this.videoUrl);
+    this.videoUrl = URL.createObjectURL(f);
+    v.src = this.videoUrl;
+    v.onloadedmetadata = () => {
+      const ar = v.videoWidth / v.videoHeight;
+      const mode = Math.abs(ar - 1) < 0.05 ? 0 : Math.abs(ar - 2) < 0.05 ? 1 : 2;
+      this.setState({ hasVideo: true, mode, videoStatus: f.name + ' · ' + v.videoWidth + '×' + v.videoHeight });
+      v.muted = this.state.source !== 'video'; v.loop = true;
+      v.play();
+    };
+  }
+
+  ensureCtx() {
+    if (!this.ac) {
+      this.ac = new (window.AudioContext || window.webkitAudioContext)();
+      this.an = this.ac.createAnalyser(); this.an.fftSize = 2048; this.an.smoothingTimeConstant = 0.4;
+      this.freq = new Uint8Array(this.an.frequencyBinCount);
+      this.dest = this.ac.createMediaStreamDestination();
+    }
+    this.ac.resume();
+  }
+  disconnectSrc() {
+    if (this.curSrc) { try { this.curSrc.disconnect(); } catch (e) {} this.curSrc = null; }
+    if (this.micStream) { this.micStream.getTracks().forEach(t => t.stop()); this.micStream = null; }
+    const a = this.audioRef.current; if (a && this.state.source === 'file') a.pause();
+    const v = this.videoRef.current; if (v) v.muted = true;
+  }
+  async useMic() {
+    try {
+      this.ensureCtx(); this.disconnectSrc();
+      this.micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      const src = this.ac.createMediaStreamSource(this.micStream);
+      src.connect(this.an); src.connect(this.dest); this.curSrc = src; this.hist = [];
+      this.setState({ source: 'mic', status: 'Escuchando micrófono' });
+    } catch (e) { this.setState({ status: 'No se pudo abrir el micrófono' }); }
+  }
+  onFile(e) {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    this.ensureCtx(); this.disconnectSrc();
+    const a = this.audioRef.current;
+    a.src = URL.createObjectURL(f);
+    if (!this.elSrc) this.elSrc = this.ac.createMediaElementSource(a);
+    this.elSrc.connect(this.an); this.elSrc.connect(this.ac.destination); this.elSrc.connect(this.dest);
+    this.curSrc = this.elSrc; this.hist = [];
+    a.play();
+    const v = this.videoRef.current; if (v && this.state.hasVideo) { v.currentTime = 0; v.play(); }
+    this.setState({ source: 'file', status: f.name });
+    e.target.value = '';
+  }
+  useVideoAudio() {
+    if (!this.state.hasVideo) { this.setState({ status: 'Primero carga un video' }); return; }
+    this.ensureCtx(); this.disconnectSrc();
+    const v = this.videoRef.current;
+    if (!this.vidSrc) this.vidSrc = this.ac.createMediaElementSource(v);
+    this.vidSrc.connect(this.an); this.vidSrc.connect(this.ac.destination); this.vidSrc.connect(this.dest);
+    this.curSrc = this.vidSrc; this.hist = [];
+    v.muted = false; v.play();
+    this.setState({ source: 'video', status: 'Audio del video' });
+  }
+  useDemo() { this.disconnectSrc(); this.demoNext = performance.now() + 200; this.setState({ source: 'demo', status: 'Demo a ' + this.bpm() + ' BPM' }); }
+  bpm() { return this.props.demoBpm ?? 120; }
+
+  setRes(n) {
+    if (this.state.recording) return;
+    const c = this.canvasRef.current; c.width = c.height = n; this.S = n;
+    this.setState({ res: n });
+  }
+  toggleRec() {
+    if (this.state.recording) { this.rec.stop(); return; }
+    const stream = this.canvasRef.current.captureStream(60);
+    if (this.dest && this.state.source !== 'demo') this.dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+    const mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'].find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+    const chunks = [];
+    this.rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: this.S >= 4096 ? 60e6 : this.S >= 2048 ? 25e6 : 10e6 });
+    this.rec.ondataavailable = ev => { if (ev.data.size) chunks.push(ev.data); };
+    this.rec.onstop = () => {
+      const blob = new Blob(chunks, { type: mime });
+      if (this.state.downloadUrl) URL.revokeObjectURL(this.state.downloadUrl);
+      this.setState({ recording: false, downloadUrl: URL.createObjectURL(blob), downloadName: 'domo-video-' + this.S + (mime.includes('mp4') ? '.mp4' : '.webm') });
+    };
+    this.rec.start(1000); this.recStart = performance.now();
+    this.setState({ recording: true, downloadUrl: null });
+  }
+  fullscreen() { const el = this.stageRef.current; if (document.fullscreenElement) document.exitFullscreen(); else if (el.requestFullscreen) el.requestFullscreen(); }
+
+  band(lo, hi) {
+    const bin = this.ac.sampleRate / this.an.fftSize;
+    const a = Math.max(1, Math.floor(lo / bin)), b = Math.max(a + 1, Math.floor(hi / bin));
+    let s = 0; for (let i = a; i < b; i++) s += this.freq[i];
+    return s / (b - a) / 255;
+  }
+  analyze(now) {
+    if (this.state.source === 'demo' || !this.an) {
+      const iv = 60000 / this.bpm();
+      let beat = false, strength = 0;
+      if (now >= this.demoNext) {
+        beat = true; strength = this.demoIdx % 4 === 0 ? 2.4 : this.demoIdx % 2 === 0 ? 1.7 : 1.35;
+        this.demoIdx++; this.lastDemo = now; this.demoNext += iv; if (now > this.demoNext) this.demoNext = now + iv;
+      }
+      const bass = Math.exp(-(now - (this.lastDemo || 0)) / 160);
+      return { bass, energy: 0.4 + 0.3 * bass, beat, strength };
+    }
+    this.an.getByteFrequencyData(this.freq);
+    const bass = this.band(30, 150), energy = this.band(30, 8000);
+    const h = this.hist; const avg = h.length ? h.reduce((a, b) => a + b, 0) / h.length : bass;
+    h.push(bass); if (h.length > 43) h.shift();
+    const sens = this.props.sensitivity ?? 1.3;
+    let beat = false, strength = 0;
+    if (h.length > 10 && bass > avg * sens && bass > 0.18 && now - this.lastBeat > 200) {
+      beat = true; strength = Math.min(3, 1 + (bass / Math.max(avg, 0.01) - 1) * 2.2 + bass);
+    }
+    return { bass, energy, beat, strength };
+  }
+
+  step() {
+    const gl = this.gl; if (!gl) return;
+    const now = performance.now(), dt = Math.min(0.05, (now - this.last) / 1000); this.last = now;
+    const p = this.props, I = p.intensity ?? 1;
+    const au = this.analyze(now);
+    if (au.beat) {
+      this.lastBeat = now; const k = au.strength / 3;
+      if (p.zoomFx ?? true) this.zoomK = Math.min(1, this.zoomK + k);
+      if (p.flashFx ?? true) this.flashK = Math.min(1, this.flashK + k * k);
+      if (p.rgbFx ?? true) this.splitK = Math.min(1, this.splitK + k);
+      if (p.rotateFx ?? true) this.rotVel += k * 0.9 * (this.demoIdx % 8 < 4 ? 1 : -1);
+    }
+    this.zoomK *= Math.exp(-dt * 7); this.flashK *= Math.exp(-dt * 9); this.splitK *= Math.exp(-dt * 8); this.rotVel *= Math.exp(-dt * 2.5);
+    this.rot += dt * ((p.spin ?? 0.02) + this.rotVel * I);
+    this.energy += (au.energy - this.energy) * Math.min(1, dt * 4);
+    const v = this.videoRef.current;
+    if (v && this.state.hasVideo && (p.rateFx ?? false)) v.playbackRate = Math.max(0.5, Math.min(2, 0.6 + this.energy * 2.2));
+    else if (v && v.playbackRate !== 1) v.playbackRate = 1;
+    const S = this.S;
+    gl.viewport(0, 0, S, S);
+    gl.bindTexture(gl.TEXTURE_2D, this.tex);
+    if (v && this.state.hasVideo && v.readyState >= 2) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, v);
+    gl.uniform2f(this.u.res, S, S);
+    gl.uniform1i(this.u.mode, this.state.mode);
+    gl.uniform1f(this.u.zoom, 1 + this.zoomK * 0.14 * I);
+    gl.uniform1f(this.u.rot, this.rot);
+    gl.uniform1f(this.u.flash, this.flashK * 0.45 * I);
+    gl.uniform1f(this.u.split, this.splitK * 0.025 * I);
+    gl.uniform1f(this.u.aspect, v && v.videoHeight ? v.videoWidth / v.videoHeight : 16 / 9);
+    gl.uniform1f(this.u.flatFov, (p.flatFov ?? 140) * Math.PI / 180);
+    gl.uniform1f(this.u.flatElev, (p.flatElev ?? 25) * Math.PI / 180);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    if (++this.frame % 5 === 0) {
+      this.setState({ level: au.bass, beatOn: now - this.lastBeat < 140, recTime: this.state.recording ? (now - this.recStart) / 1000 : 0 });
+    }
+  }
+
+  renderVals() {
+    const s = this.state, on = '#2a2236', off = 'transparent';
+    const t = Math.floor(s.recTime), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, '0');
+    return {
+      canvasRef: this.canvasRef, fileRef: this.fileRef, audioRef: this.audioRef, stageRef: this.stageRef, videoRef: this.videoRef, videoFileRef: this.videoFileRef,
+      empty: !s.hasVideo, pickVideo: () => this.videoFileRef.current && this.videoFileRef.current.click(), onVideoFile: e => this.onVideoFile(e),
+      videoDisplay: s.hasVideo ? 'block' : 'none', videoStatus: s.videoStatus,
+      modeFish: () => this.setState({ mode: 0 }), modeEq: () => this.setState({ mode: 1 }), modeFlat: () => this.setState({ mode: 2 }),
+      bgFish: s.mode === 0 ? on : off, bgEq: s.mode === 1 ? on : off, bgFlat: s.mode === 2 ? on : off,
+      useMic: () => this.useMic(), pickFile: () => this.fileRef.current && this.fileRef.current.click(), onFile: e => this.onFile(e),
+      useVideoAudio: () => this.useVideoAudio(), useDemo: () => this.useDemo(),
+      bgMic: s.source === 'mic' ? on : off, bgFile: s.source === 'file' ? on : off, bgVid: s.source === 'video' ? on : off, bgDemo: s.source === 'demo' ? on : off,
+      audioDisplay: s.source === 'file' ? 'block' : 'none',
+      status: s.status, levelPct: Math.round(Math.min(1, s.level) * 100) + '%', beatColor: s.beatOn ? '#9cff8a' : '#2a2532',
+      res1k: () => this.setRes(1024), res2k: () => this.setRes(2048), res4k: () => this.setRes(4096),
+      bg1k: s.res === 1024 ? on : off, bg2k: s.res === 2048 ? on : off, bg4k: s.res === 4096 ? on : off,
+      toggleRec: () => this.toggleRec(), recBg: s.recording ? '#ff6a6a' : '#9cff8a',
+      recLabel: s.recording ? 'Detener · ' + mm + ':' + ss : 'Grabar',
+      downloadUrl: s.downloadUrl, downloadName: s.downloadName,
+      fullscreen: () => this.fullscreen(), guide: s.guide, toggleGuide: () => this.setState({ guide: !s.guide }), guideLabel: s.guide ? 'Ocultar guía' : 'Mostrar guía'
+    };
+  }
+}
+</script>
+</body>
+</html>
