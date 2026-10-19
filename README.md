@@ -10,7 +10,10 @@ como capas mezclables, con secuencia de escenas, control en vivo y render cuadro
 
 Necesitas **Google Chrome** y **python3** (viene con las herramientas de línea de comandos de macOS).
 
-1. Clona o descarga el repositorio.
+1. Clona o descarga el repositorio:
+   ```
+   git clone https://github.com/RosanaGC/domo-control.git
+   ```
 2. Solo la primera vez, en Terminal dentro de la carpeta:
    ```
    chmod +x iniciar.command
@@ -20,7 +23,7 @@ Necesitas **Google Chrome** y **python3** (viene con las herramientas de línea 
 
 O a mano:
 ```
-cd domo
+cd domo-control
 python3 -m http.server 8080
 ```
 y abre http://localhost:8080/Domo%20Control.html en Chrome.
