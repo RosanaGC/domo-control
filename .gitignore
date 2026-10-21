@@ -12,3 +12,6 @@ escenas/
 *.jpeg
 *.jpg
 .DS_Store
+
+# Proyectos (escenas, música, video y ajustes de cada proyecto): pesados y personales
+proyectos/

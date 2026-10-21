@@ -57,6 +57,32 @@ input[type=color]{width:100%;height:22px;padding:0;border:1px solid var(--line);
 .srow.cur .name{background:var(--on);border-color:var(--p)}
 .srow input{width:100%;font:inherit;font-size:11px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:5px 4px;text-align:right}
 .srow .unit{font-size:10px;color:var(--mut)}
+#onb{position:fixed;left:16px;top:16px;z-index:10;width:min(380px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow-y:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+#onb[hidden]{display:none}
+#onb .ohead{display:flex;justify-content:space-between;align-items:center}
+#onb .ohead{gap:8px}
+#onb .ohead span{display:flex;flex:none}
+#onb .ohead span button{border:none;padding:2px 6px;color:var(--mut)}
+#onb .otitle{flex:1;border:none;padding:2px 0;font-size:10px;letter-spacing:.15em;color:var(--mut);text-align:left;cursor:default;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#onb.min{width:auto;padding:8px 10px}
+#onb.min #onbSteps,#onb.min>.g2{display:none}
+#onb.min .otitle{cursor:pointer;color:var(--fg)}
+#onb:not(.min) #onbClose{display:none}
+#onbSteps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+#onbSteps li{border:1px solid var(--edge);border-radius:6px}
+#onbSteps li.cur{border-color:var(--p)}
+#onbSteps .st{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:none;padding:9px 10px}
+#onbSteps .n{width:18px;height:18px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:10px;color:var(--mut);flex:none}
+#onbSteps li.ok .n{background:var(--g);border-color:var(--g);color:var(--bg)}
+#prjDlg{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.75);display:grid;place-items:center;padding:16px}
+#prjDlg[hidden]{display:none}
+#prjDlg .box{width:min(440px,100%);max-height:calc(100vh - 32px);overflow-y:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:20px;display:flex;flex-direction:column;gap:12px}
+#prjDlg .prow{display:grid;grid-template-columns:1fr auto;gap:6px}
+#prjDlg input{font:inherit;font-size:12px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px}
+#prjDlg .prow button{padding:8px 14px}
+#prjList button{text-align:left;padding:8px 10px}
+#onbSteps .bd{padding:0 10px 12px 38px;display:flex;flex-direction:column;gap:8px}
+#onbSteps code{font-size:10px;color:var(--soft);background:var(--edge);padding:6px;border-radius:3px;display:block;white-space:pre-wrap;word-break:break-all;user-select:all}
 .chk{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--soft)}
 select{font:inherit;font-size:11px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:4px}
 .keys{font-size:11px;color:var(--mut);line-height:1.8}
@@ -65,6 +91,23 @@ select{font:inherit;font-size:11px;color:var(--fg);background:var(--bg);border:1
 </style>
 </head>
 <body>
+<div id="prjDlg" hidden>
+  <div class="box">
+    <h1>PROYECTO</h1>
+    <div class="note">Escenas, música, video y ajustes se guardan solos en la carpeta <b>proyectos/&lt;nombre&gt;/</b> de domo-control, y vuelven al recargar o al abrir el proyecto otro día.</div>
+    <div class="lab">NUEVO</div>
+    <div class="prow"><input id="prjNameIn" placeholder="Nombre del proyecto" maxlength="60"><button id="prjCreate">Crear</button></div>
+    <div class="lab">ABRIR</div>
+    <div id="prjList" class="slist"></div>
+    <div class="status" id="prjDlgStatus"></div>
+    <button class="dash" id="prjSkip">Seguir sin proyecto (no se guarda nada)</button>
+  </div>
+</div>
+<div id="onb" hidden>
+  <div class="ohead"><button id="onbTitle" class="otitle" title="Abrir la guía">GUÍA · NUEVO PROYECTO</button><span><button id="onbMin">—</button><button id="onbClose" title="Ocultar del todo (se vuelve a abrir con H o con el botón Guía del panel)">✕</button></span></div>
+  <ol id="onbSteps"></ol>
+  <div class="g2"><button id="onbPrev">Anterior</button><button id="onbNext">Siguiente</button></div>
+</div>
 <div id="app">
   <div id="stage">
     <div id="dome">
@@ -81,7 +124,17 @@ select{font:inherit;font-size:11px;color:var(--fg);background:var(--bg);border:1
   <div id="panel">
     <div class="blk" style="gap:6px">
       <h1>DOMO · CONTROL</h1>
-      <div class="note">Domemaster fisheye 180°. Partículas, splats y video como capas mezclables, todo reactivo al audio.</div>
+      <div class="note">Domemaster fisheye 210° / 180°. Partículas, splats y video como capas mezclables, todo reactivo al audio.</div>
+      <button class="dash" id="onbOpen">Guía: armar y renderizar un proyecto (H)</button>
+    </div>
+
+    <div class="blk" style="gap:8px">
+      <div class="lab">PROYECTO · <span id="prjName" style="color:var(--fg)">—</span></div>
+      <div class="g2">
+        <button id="prjOpen">Nuevo / abrir</button>
+        <button id="prjSave">Guardar</button>
+      </div>
+      <div class="status" id="prjStatus"></div>
     </div>
 
     <div class="blk">
@@ -92,6 +145,7 @@ select{font:inherit;font-size:11px;color:var(--fg);background:var(--bg);border:1
         <button data-src="video">Video</button>
         <button data-src="demo">Demo</button>
       </div>
+      <button class="dash" id="prjMusic" style="display:none"></button>
       <select id="micSel" title="Entrada de audio para Mic (interfaz, consola…)"><option value="">Entrada predeterminada</option></select>
       <input id="audioFile" type="file" accept="audio/*" hidden>
       <audio id="audioEl" controls style="width:100%;height:32px;display:none"></audio>
@@ -146,19 +200,21 @@ select{font:inherit;font-size:11px;color:var(--fg);background:var(--bg);border:1
         <button data-res="2048">2048</button>
         <button data-res="4096">4096</button>
       </div>
-      <div class="note">4096 es lo final para el domo; 1024 para ensayar fluido.</div>
+      <div class="note">Resolución en vivo: 1024 para ensayar fluido. El render usa la suya (4096 por defecto).</div>
       <div class="ctl" data-g="dome"></div>
       <div class="meter" title="Cuadros por segundo. 55-60 es fluido; bajo 50 se pueden notar tirones."><span class="note">Rendimiento</span><span id="fps" style="font-size:12px;font-variant-numeric:tabular-nums">— fps</span></div>
     </div>
 
     <div class="blk">
       <div class="lab">RENDERIZAR CANCIÓN</div>
-      <div class="note">Genera el video cuadro por cuadro con la canción como audio: sale fluido aunque el equipo no alcance tiempo real. Usa las capas, ajustes, resolución y secuencia de escenas actuales.</div>
+      <div class="note">Genera el video cuadro por cuadro con la canción como audio: sale fluido aunque el equipo no alcance tiempo real. Usa las capas, ajustes, formato domo y secuencia de escenas actuales. Por defecto sale como pide el planetario: domemaster 4096×4096, 30 cuadros/seg, MP4 H.265.</div>
       <button class="dash" id="songPick">Elegir canción</button>
       <input id="songFile" type="file" accept="audio/*" hidden>
       <div class="status" id="songName"></div>
-      <label class="chk"><input type="checkbox" id="renderAudio"> Incluir el audio en el video (solo para revisar)</label>
+      <label class="row"><span>Formato</span><select id="renderFmt"><option value="mp4" selected>MP4 H.265 (planetario)</option><option value="png">Secuencia PNG (sin pérdida)</option><option value="webm">Video WebM (prueba rápida)</option></select><span></span></label>
+      <label class="row"><span>Resolución</span><select id="renderRes"><option value="4096" selected>4096 (planetario)</option><option value="2048">2048 (postulación)</option><option value="1024">1024 (prueba)</option></select><span></span></label>
       <label class="row"><span>Cuadros/seg</span><select id="renderFps"><option value="30" selected>30</option><option value="60">60</option></select><span></span></label>
+      <label class="chk"><input type="checkbox" id="renderAudio"> Incluir el audio en el video (solo WebM, para revisar)</label>
       <div class="g2">
         <button id="renderGo" disabled>Renderizar</button>
         <button id="renderStop" disabled>Cancelar</button>
@@ -194,12 +250,14 @@ select{font:inherit;font-size:11px;color:var(--fg);background:var(--bg);border:1
       <b>1</b><b>2</b><b>3</b>activar / apagar capas<br>
       <b>N</b><b>B</b>escena siguiente / anterior (con fundido)<br>
       <b>D</b>invertir sentido de giro · <b>P</b>secuencia play / pausa<br>
-      <b>R</b>grabar · <b>F</b>pantalla completa · <b>G</b>guía
+      <b>R</b>grabar · <b>F</b>pantalla completa · <b>G</b>guía domo<br>
+      <b>H</b>guía de proyecto (abrir / minimizar)
     </div>
   </div>
 </div>
 
 <script src="lib/webm-muxer.js"></script>
+<script src="lib/mp4-muxer.js"></script>
 <script>
 // ---------- Parámetros ----------
 const BLENDS = [['source-over', 'Normal'], ['screen', 'Pantalla'], ['lighter', 'Suma']];
@@ -217,7 +275,8 @@ const SCHEMA = {
     { k: 'sensitivity', l: 'Umbral golpe', min: 1.05, max: 2.2, step: 0.05, d: 1.3 },
     { k: 'bpm', l: 'BPM demo', min: 60, max: 200, step: 1, d: 120 },
     { k: 'react', l: 'Reacción', min: 0, max: 2, step: 0.05, d: 0.8 },
-    { k: 'smooth', l: 'Suavidad', min: 0, max: 1, step: 0.05, d: 0.6 }
+    { k: 'smooth', l: 'Suavidad', min: 0, max: 1, step: 0.05, d: 0.6 },
+    { k: 'flow', l: 'Fluidez', min: 0, max: 1, step: 0.05, d: 0.8 }
   ],
   particles: [
     ...LAYER_COMMON({ on: true, blend: 'lighter' }),
@@ -235,7 +294,10 @@ const SCHEMA = {
     ...LAYER_COMMON({ on: false, blend: 'screen' }),
     { k: 'xfade', l: 'Fundido escena', min: 0.5, max: 15, step: 0.5, d: 4, u: 's' },
     { k: 'xstyle', l: 'Tipo fundido', t: 'select', opts: [['dissolve', 'Disolver'], ['black', 'Por negro']], d: 'dissolve' },
-    { k: 'path', l: 'Recorrido', t: 'select', opts: [['orbit', 'Órbita'], ['dive', 'Entrar y salir']], d: 'orbit' },
+    { k: 'path', l: 'Recorrido', t: 'select', opts: [['orbit', 'Órbita'], ['dive', 'Entrar y salir'], ['wander', 'Libre (va variando)']], d: 'orbit' },
+    { k: 'vary', l: 'Variación (libre)', min: 0, max: 1, step: 0.05, d: 0.6 },
+    { k: 'varTime', l: 'Ritmo cambios', min: 5, max: 60, step: 1, d: 20, u: 's' },
+    { k: 'musMove', l: 'Mover con música', min: 0, max: 1, step: 0.05, d: 0.5 },
     { k: 'depth', l: 'Meterse', min: 0, max: 1, step: 0.01, d: 0 },
     { k: 'dir', l: 'Sentido', t: 'select', opts: [['cw', 'Horario'], ['ccw', 'Antihorario'], ['alt', 'Alternar']], d: 'cw' },
     { k: 'dirTime', l: 'Cambio sentido', min: 0.5, max: 10, step: 0.5, d: 3, u: 's' },
@@ -266,9 +328,14 @@ const DEF = {};
 for (const g in SCHEMA) { DEF[g] = {}; for (const s of SCHEMA[g]) DEF[g][s.k] = s.d; }
 function merged(src) { const o = {}; for (const g in DEF) o[g] = { ...DEF[g], ...((src && src[g]) || {}) }; return o; }
 let P = (() => { try { return merged(JSON.parse(localStorage.getItem(STORE))); } catch (e) { return merged(null); } })();
-function save() { try { localStorage.setItem(STORE, JSON.stringify(P)); } catch (e) {} }
+function save() { try { localStorage.setItem(STORE, JSON.stringify(P)); } catch (e) {} prjDirty(); }
+// Proyecto abierto: lo que se cambia se guarda solo en proyectos/<nombre>/ (ver servidor.py)
+const PRJ = { name: null, loading: false, pending: 0, timer: 0, saved: null, err: null, list: [], music: null, video: null };
+const PRJ_KEY = 'domo-proyecto';
 
 // Envolvente con ataque suave: los golpes suben la meta y el valor la sigue con rampa
+// Con fluidez, decay se acerca a slow y el golpe se escala para mantener el mismo empuje promedio
+function flowDecay(fast, slow, au) { return fast + (slow - fast) * au.flow; }
 class Env {
   constructor() { this.v = 0; this.t = 0; }
   hit(k, max = 1) { this.t = Math.min(max, this.t + k); }
@@ -389,6 +456,8 @@ function analyze(now) {
   A.sm = A.sm || { bass: 0, mid: 0, high: 0, energy: 0 };
   for (const k in A.sm) { A.sm[k] += (r[k] - A.sm[k]) * f; r[k] = A.sm[k]; }
   r.atk = rate; r.spread = sm * 0.35; r.react = P.audio.react;
+  // fluidez: el movimiento sube y baja más lento, así los golpes no se sienten como tirones
+  r.flow = P.audio.flow; r.flowAtk = rate + (Math.min(rate, 1.2) - rate) * r.flow;
   return r;
 }
 
@@ -725,7 +794,7 @@ class SplatView {
     const nrm = v => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
     const cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
     const a1 = nrm(cr(up, Math.abs(up[0]) < 0.9 ? [1, 0, 0] : [0, 0, 1])), a2 = cr(up, a1);
-    const R = p.radius * st.s, H = p.height * st.s;
+    const R = p.radius * st.s * m.wR, H = (p.height + m.wH) * st.s;
     const a = m.pathA, rr = R * (1 + 0.25 * Math.sin(a * 2.3)) * (1 - m.depth * 0.95);
     const rad = [0, 1, 2].map(i => Math.cos(a) * a1[i] + Math.sin(a) * a2[i]);
     const tan = [0, 1, 2].map(i => -Math.sin(a) * a1[i] + Math.cos(a) * a2[i]);
@@ -734,7 +803,7 @@ class SplatView {
     // al invertir el sentido la mirada pasa suavemente por el centro de la escena
     const inw = 0.45 + m.depth * 0.9;
     const look = nrm([0, 1, 2].map(i => tan[i] * m.dir * Math.cos(inw) - rad[i] * Math.sin(inw)));
-    const tl = p.tilt * Math.PI / 180;
+    const tl = Math.max(0, Math.min(90, p.tilt + m.wT)) * Math.PI / 180;
     const f = nrm([0, 1, 2].map(i => look[i] * Math.cos(tl) + up[i] * Math.sin(tl)));
     const u0 = nrm([0, 1, 2].map(i => -look[i] * Math.sin(tl) + up[i] * Math.cos(tl)));
     const r0 = cr(f, u0), cR = Math.cos(m.roll), sR = Math.sin(m.roll);
@@ -769,7 +838,7 @@ class Splats {
     if (this.views[0].err) onStatus(this.views[0].err);
     this.cur = 0; this.next = -1; this.t = -1; this.scene = null; this.scenes = [];
     this.preId = null; this.shownAt = 0; this.shown = false; this.awaitCur = false; this.loading = false; this.playing = false; this.loop = true;
-    this.m = { pathA: 0, dPhase: 0, depth: 0, roll: 0, dir: 1, dirT: 1, boostE: new Env(), punchE: new Env(), boost: 0, punch: 0 };
+    this.m = { pathA: 0, dPhase: 0, depth: 0, roll: 0, dir: 1, dirT: 1, boostE: new Env(), punchE: new Env(), boost: 0, punch: 0, wA: 0, wR: 1, wH: 0, wT: 0, mus: 0, musAvg: -1 };
   }
   resize(S) { this.views.forEach(v => v.resize(S)); }
   ensureScene() { if (!this.scenes.length) this.onStatus('Carga archivos .ply / .splat para empezar'); }
@@ -820,18 +889,42 @@ class Splats {
   step(dt, now, au, p) {
     const m = this.m;
     this.views.forEach(v => v.pump());
+    const bDec = flowDecay(3.2, 0.45, au);
     if (au.beat) {
-      m.boostE.hit(au.strength * au.react, 8); m.punchE.hit(au.strength * 0.25 * au.react);
-      if (p.dir === 'alt' && A.beats % 32 === 0) m.dirT = -m.dirT;
+      m.boostE.hit(au.strength * au.react * bDec / 3.2, 8); m.punchE.hit(au.strength * 0.25 * au.react * (1 - au.flow * 0.85));
+      if (p.dir === 'alt' && p.path !== 'wander' && A.beats % 32 === 0) m.dirT = -m.dirT;
     }
     if (p.dir === 'cw') m.dirT = 1; else if (p.dir === 'ccw') m.dirT = -1;
-    m.boost = m.boostE.tick(dt, 3.2, au.atk); m.punch = m.punchE.tick(dt, 6, au.atk);
+    m.boost = m.boostE.tick(dt, bDec, au.flowAtk); m.punch = m.punchE.tick(dt, flowDecay(6, 2, au), au.flowAtk);
     m.dir += (m.dirT - m.dir) * Math.min(1, dt * 3 / Math.max(0.2, p.dirTime));
     m.pathA += dt * (p.speed * 0.04 + m.boost * 0.35 * p.push) * m.dir;
     // meterse: profundidad manual + vaivén automático hacia el centro en modo "Entrar y salir"
-    let auto = 0;
-    if (p.path === 'dive') { m.dPhase += dt * (p.speed * 0.05 + m.boost * 0.25 * p.push); auto = 0.5 - 0.5 * Math.cos(m.dPhase); }
-    const depthT = 1 - (1 - p.depth) * (1 - auto);
+    // la música mueve lento: energía de los últimos ~4 s contra la de los últimos ~30 s (-1 tranquilo … 1 intenso)
+    if (m.musAvg < 0) m.mus = m.musAvg = au.energy;
+    m.mus += (au.energy - m.mus) * Math.min(1, dt / 4);
+    m.musAvg += (au.energy - m.musAvg) * Math.min(1, dt / 30);
+    const lev = Math.max(-1, Math.min(1, (m.mus - m.musAvg) / (m.musAvg + 0.05) * 2.5)) * p.musMove;
+    let auto = 0, tR = 1, tH = 0, tT = 0;
+    if (p.path === 'dive') {
+      // vaivén con profundidad y altura que van cambiando de una pasada a otra
+      m.dPhase += dt * (p.speed * 0.05 + m.boost * 0.25 * p.push);
+      auto = (0.5 - 0.5 * Math.cos(m.dPhase)) * (0.7 + 0.3 * Math.sin(m.dPhase * 0.29 + 0.8));
+      tH = 0.1 * Math.sin(m.dPhase * 0.37 + 1);
+    }
+    else if (p.path === 'wander') {
+      // "Libre": senos de períodos que no coinciden, así nunca se repite igual; la música lo acelera un poco
+      m.wA += dt * (1 + m.boost * 0.15 * p.push) / p.varTime;
+      const w = m.wA * 2 * Math.PI, V = p.vary;
+      auto = V * (0.5 - 0.5 * Math.cos(w * 0.9 + 1.7 * Math.sin(w * 0.31)));
+      tR = 1 + V * (0.45 * Math.sin(w * 0.53 + 1) + 0.2 * Math.sin(w * 1.37));
+      tH = V * (0.18 * Math.sin(w * 0.41 + 2) + 0.07 * Math.sin(w * 1.13));
+      tT = V * 14 * Math.sin(w * 0.67 + 0.5);
+      if (p.dir === 'alt') m.dirT = Math.sin(w * 0.23 + 0.3) >= 0 ? 1 : -1;
+    }
+    tH += lev * 0.12;
+    const ease = Math.min(1, dt * 0.8);
+    m.wR += (tR - m.wR) * ease; m.wH += (tH - m.wH) * ease; m.wT += (tT - m.wT) * ease;
+    const depthT = Math.max(0, Math.min(1, 1 - (1 - p.depth) * (1 - auto) + lev * 0.25));
     m.depth += (depthT - m.depth) * Math.min(1, dt * 1.5);
     m.roll += dt * p.roll * m.dir;
 
@@ -918,31 +1011,32 @@ class Video {
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.uniform1i(this.u.tex, 0);
   }
-  load(f) {
+  load(f, keep = false) {
     const v = this.el;
     if (this.url) URL.revokeObjectURL(this.url);
     this.url = URL.createObjectURL(f); v.src = this.url;
     v.onloadedmetadata = () => {
       const ar = v.videoWidth / v.videoHeight;
-      set('video', 'mode', Math.abs(ar - 1) < 0.05 ? 'fish' : Math.abs(ar - 2) < 0.05 ? 'eq' : 'flat');
+      if (!keep) set('video', 'mode', Math.abs(ar - 1) < 0.05 ? 'fish' : Math.abs(ar - 2) < 0.05 ? 'eq' : 'flat');
       this.has = true;
       document.getElementById('videoStatus').textContent = f.name + ' · ' + v.videoWidth + '×' + v.videoHeight;
       v.muted = A.source !== 'video'; v.play();
-      if (!P.video.on) set('video', 'on', true);
+      if (!P.video.on && !keep) set('video', 'on', true);
     };
   }
   step(dt, now, au, p) {
     const gl = this.gl; if (!gl) return;
     const I = p.intensity, v = this.el;
+    const zDec = flowDecay(7, 1.5, au), rDec = flowDecay(2.5, 0.5, au);
     if (au.beat) {
       const k = au.strength / 3 * au.react;
-      if (p.zoomFx) this.zoomE.hit(k);
+      if (p.zoomFx) this.zoomE.hit(k * zDec / 7);
       if (p.flashFx) this.flashE.hit(k * k);
       if (p.rgbFx) this.splitE.hit(k);
-      if (p.rotateFx) this.rotT += k * 0.9 * (A.beats % 8 < 4 ? 1 : -1);
+      if (p.rotateFx) this.rotT += k * 0.9 * rDec / 2.5 * (A.beats % 8 < 4 ? 1 : -1);
     }
-    this.zoomK = this.zoomE.tick(dt, 7, au.atk); this.flashK = this.flashE.tick(dt, 9, au.atk); this.splitK = this.splitE.tick(dt, 8, au.atk);
-    this.rotVel += (this.rotT - this.rotVel) * Math.min(1, dt * au.atk); this.rotT *= Math.exp(-dt * 2.5);
+    this.zoomK = this.zoomE.tick(dt, zDec, au.flowAtk); this.flashK = this.flashE.tick(dt, 9, au.atk); this.splitK = this.splitE.tick(dt, 8, au.atk);
+    this.rotVel += (this.rotT - this.rotVel) * Math.min(1, dt * au.flowAtk); this.rotT *= Math.exp(-dt * rDec);
     this.rot += dt * (p.spin + this.rotVel * I);
     this.energy += (au.energy - this.energy) * Math.min(1, dt * 4);
     if (this.has && p.rateFx) v.playbackRate = Math.max(0.5, Math.min(2, 0.6 + this.energy * 2.2));
@@ -1030,8 +1124,9 @@ function buildControls() {
 }
 function syncUI() { for (const key in CTL) { const [g, k] = key.split('.'); show(g, k); } onLayers(); updateGuide(); }
 function loadDurations() { try { return JSON.parse(localStorage.getItem(DUR_STORE)) || {}; } catch (e) { return {}; } }
-function saveDuration(sc) { const d = loadDurations(); d[sc.label] = sc.dur; try { localStorage.setItem(DUR_STORE, JSON.stringify(d)); } catch (e) {} }
+function saveDuration(sc) { const d = loadDurations(); d[sc.label] = sc.dur; try { localStorage.setItem(DUR_STORE, JSON.stringify(d)); } catch (e) {} prjDirty(); }
 function renderScenes() {
+  prjDirty();
   const box = document.getElementById('scenes'); box.innerHTML = '';
   const L = splats.scenes;
   if (!L.length) { box.innerHTML = '<div class="note">Sin escenas. Agrega archivos y define cuántos segundos dura cada una.</div>'; return; }
@@ -1046,7 +1141,7 @@ function renderScenes() {
     const up = document.createElement('button'); up.textContent = '↑'; up.title = 'Subir'; up.onclick = () => mv(-1);
     const dn = document.createElement('button'); dn.textContent = '↓'; dn.title = 'Bajar'; dn.onclick = () => mv(1);
     const rm = document.createElement('button'); rm.textContent = '✕'; rm.title = 'Quitar de la lista';
-    rm.onclick = () => { L.splice(i, 1); if (splats.preId === sc.id) splats.preId = null; renderScenes(); };
+    rm.onclick = () => { L.splice(i, 1); if (splats.preId === sc.id) splats.preId = null; if (sc.archivo) prjDelete('escenas', sc.archivo); renderScenes(); };
     row.append(name, dur, s, up, dn, rm); box.append(row);
   });
 }
@@ -1196,10 +1291,16 @@ async function loadSong(f) {
     $('renderGo').disabled = false;
   } catch (e) { st.textContent = 'No se pudo leer el audio (' + e.message + ')'; }
 }
-async function pickCodec(w, h, fps) {
+// H.265 en Chrome sale del codificador por hardware del Mac; 4096×4096 necesita nivel 6 (L180) o más
+const CODECS = {
+  mp4: [['hvc1.1.6.L180.B0', 'hevc'], ['hvc1.1.6.L183.B0', 'hevc'], ['hvc1.1.6.L186.B0', 'hevc'], ['hvc1.1.6.L153.B0', 'hevc']],
+  webm: [['vp09.00.61.08', 'V_VP9'], ['vp09.00.51.08', 'V_VP9'], ['vp09.00.41.08', 'V_VP9'], ['vp8', 'V_VP8']]
+};
+async function pickCodec(w, h, fps, fmt) {
   const bitrate = w >= 4096 ? 100e6 : w >= 2048 ? 30e6 : 12e6;
-  for (const [codec, mux] of [['vp09.00.61.08', 'V_VP9'], ['vp09.00.51.08', 'V_VP9'], ['vp09.00.41.08', 'V_VP9'], ['vp8', 'V_VP8']]) {
+  for (const [codec, mux] of CODECS[fmt]) {
     const cfg = { codec, width: w, height: h, bitrate, framerate: fps, latencyMode: 'quality' };
+    if (mux === 'hevc') cfg.hevc = { format: 'hevc' };
     try { if ((await VideoEncoder.isConfigSupported(cfg)).supported) return { cfg, mux }; } catch (e) {}
   }
   return null;
@@ -1215,40 +1316,63 @@ function seekVideo(t) {
     v.addEventListener('seeked', done); v.currentTime = target;
   });
 }
+// Guarda el cuadro actual como PNG; toBlob copia el lienzo al llamarlo, así que se puede seguir dibujando
+function savePng(dir, name) {
+  return new Promise((res, rej) => $('out').toBlob(b => b ? res(b) : rej(new Error('no se pudo generar el PNG')), 'image/png'))
+    .then(async b => { const w = await (await dir.getFileHandle(name, { create: true })).createWritable(); await w.write(b); await w.close(); });
+}
 async function startRender() {
   const song = RENDER.song, st = $('renderStatus');
   if (!song || RENDER.active || recording) return;
-  if (!window.VideoEncoder || !window.showSaveFilePicker) { st.textContent = 'Usa Chrome: este navegador no permite renderizar video.'; return; }
+  const fmt = $('renderFmt').value, png = fmt === 'png', mp4 = fmt === 'mp4', R = +$('renderRes').value;
+  if (png ? !window.showDirectoryPicker : (!window.VideoEncoder || !window.showSaveFilePicker)) { st.textContent = 'Usa Chrome: este navegador no permite renderizar video.'; return; }
   const fps = +$('renderFps').value, total = Math.ceil(song.buf.duration * fps);
-  const codec = await pickCodec(S, S, fps);
-  if (!codec) { st.textContent = 'Chrome no puede codificar ' + S + '×' + S + ' en este equipo. Prueba una resolución menor.'; return; }
-  let handle;
-  try { handle = await showSaveFilePicker({ suggestedName: 'domo-' + S + '-' + song.name + '.webm', types: [{ description: 'Video WebM', accept: { 'video/webm': ['.webm'] } }] }); }
-  catch (e) { return; }
-  const out = await handle.createWritable();
+  const base = 'domo-' + R + '-' + song.name;
+  let codec = null, out = null, dir = null;
+  if (png) {
+    try { dir = await (await showDirectoryPicker({ id: 'domo-render', mode: 'readwrite' })).getDirectoryHandle(base, { create: true }); }
+    catch (e) { return; }
+  } else {
+    codec = await pickCodec(R, R, fps, fmt);
+    if (!codec) { st.textContent = 'Chrome no puede codificar ' + (mp4 ? 'H.265 ' : '') + R + '×' + R + ' en este equipo. Usa Secuencia PNG y arma el MP4 con ffmpeg (ver README).'; return; }
+    const type = mp4 ? { description: 'Video MP4 H.265', accept: { 'video/mp4': ['.mp4'] } } : { description: 'Video WebM', accept: { 'video/webm': ['.webm'] } };
+    let handle;
+    try { handle = await showSaveFilePicker({ suggestedName: base + '.' + fmt, types: [type] }); }
+    catch (e) { return; }
+    out = await handle.createWritable();
+  }
 
   const ch = Math.min(2, song.buf.numberOfChannels), SR = 48000;
   const chans = [...Array(ch)].map((_, c) => song.buf.getChannelData(c));
   const mono = new Float32Array(song.buf.length);
   for (let c = 0; c < song.buf.numberOfChannels; c++) { const d = song.buf.getChannelData(c); for (let i = 0; i < mono.length; i++) mono[i] += d[i] / song.buf.numberOfChannels; }
 
-  const withAudio = $('renderAudio').checked;
-  const muxer = new WebMMuxer.Muxer({
-    target: new WebMMuxer.FileSystemWritableFileStreamTarget(out),
-    video: { codec: codec.mux, width: S, height: S, frameRate: fps },
-    audio: withAudio ? { codec: 'A_OPUS', sampleRate: SR, numberOfChannels: ch } : undefined
-  });
-  let encErr = null;
-  const venc = new VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: e => { encErr = e; } });
-  venc.configure(codec.cfg);
-  const aenc = withAudio ? new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: e => { encErr = e; } }) : null;
-  if (aenc) aenc.configure({ codec: 'opus', sampleRate: SR, numberOfChannels: ch, bitrate: 192000 });
+  const withAudio = fmt === 'webm' && $('renderAudio').checked;
+  let encErr = null, venc = null, aenc = null, muxer = null;
+  if (!png) {
+    muxer = mp4 ? new Mp4Muxer.Muxer({
+      target: new Mp4Muxer.FileSystemWritableFileStreamTarget(out),
+      video: { codec: 'hevc', width: R, height: R, frameRate: fps },
+      fastStart: false
+    }) : new WebMMuxer.Muxer({
+      target: new WebMMuxer.FileSystemWritableFileStreamTarget(out),
+      video: { codec: codec.mux, width: R, height: R, frameRate: fps },
+      audio: withAudio ? { codec: 'A_OPUS', sampleRate: SR, numberOfChannels: ch } : undefined
+    });
+    venc = new VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: e => { encErr = e; } });
+    venc.configure(codec.cfg);
+    aenc = withAudio ? new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: e => { encErr = e; } }) : null;
+    if (aenc) aenc.configure({ codec: 'opus', sampleRate: SR, numberOfChannels: ch, bitrate: 192000 });
+  }
+  const pend = new Set();
 
-  // estado: el audio en vivo se suspende y el análisis sale de la canción
-  const prevSource = A.source, wasPlaying = splats.playing;
-  RENDER.active = true; RENDER.cancel = false; RENDER.mono = mono; RENDER.smooth = new Float32Array(FFT_N / 2);
+  // estado: el audio en vivo se suspende y el análisis sale de la canción; la resolución en vivo se recupera al final
+  const prevSource = A.source, wasPlaying = splats.playing, prevRes = S;
+  setRes(R);
+  RENDER.active = true; RENDER.cancel = false; RENDER.done = null; RENDER.mono = mono; RENDER.smooth = new Float32Array(FFT_N / 2);
   disconnectSrc();
   A.source = 'render'; A.sr = SR; A.freq = A.freq || new Uint8Array(FFT_N / 2);
+  splats.m.musAvg = -1;
   A.hist = []; A.lastBeat = -1e9; A.lastPulse = -1e9; A.lastManual = -1e9; A.lastT = undefined; A.sm = null; A.beats = 0;
   if (P.splats.on && splats.scenes.length) { splats.playing = splats.scenes.length > 1; splats.pick(splats.scenes[0], true); }
   if (video.has) video.el.pause();
@@ -1262,8 +1386,14 @@ async function startRender() {
       if (P.splats.on) await splats.syncSorts();
       if (P.video.on && video.has) await seekVideo(tms / 1000);
       drawFrame(tms, 1 / fps);
-      const vf = new VideoFrame($('out'), { timestamp: Math.round(i * 1e6 / fps), duration: Math.round(1e6 / fps) });
-      venc.encode(vf, { keyFrame: i % (fps * 2) === 0 }); vf.close();
+      if (png) {
+        const p = savePng(dir, 'cuadro_' + String(i).padStart(6, '0') + '.png').catch(e => { encErr = e; }).finally(() => pend.delete(p));
+        pend.add(p);
+        while (pend.size > 3) await Promise.race(pend);
+      } else {
+        const vf = new VideoFrame($('out'), { timestamp: Math.round(i * 1e6 / fps), duration: Math.round(1e6 / fps) });
+        venc.encode(vf, { keyFrame: i % (fps * 2) === 0 }); vf.close();
+      }
       const aEnd = Math.min(song.buf.length, Math.round((i + 1) / fps * SR));
       if (aenc && aEnd > aPos) {
         const n = aEnd - aPos, data = new Float32Array(n * ch);
@@ -1271,7 +1401,7 @@ async function startRender() {
         const ad = new AudioData({ format: 'f32-planar', sampleRate: SR, numberOfFrames: n, numberOfChannels: ch, timestamp: Math.round(aPos / SR * 1e6), data });
         aenc.encode(ad); ad.close(); aPos = aEnd;
       }
-      while (venc.encodeQueueSize > 3) await sleep(2);
+      while (venc && venc.encodeQueueSize > 3) await sleep(2);
       if (encErr) throw encErr;
       if (i % 5 === 0) {
         const el = (performance.now() - t0) / 1000, eta = el / (i + 1) * (total - i - 1);
@@ -1280,14 +1410,18 @@ async function startRender() {
         await sleep(0);
       }
     }
-    await venc.flush(); if (aenc) await aenc.flush();
-    muxer.finalize(); await out.close();
-    st.textContent = (RENDER.cancel ? 'Cancelado: se guardó lo renderizado hasta ' : 'Listo: ') + fmtTime(i / fps) + ' de video en ' + fmtTime((performance.now() - t0) / 1000) + '.';
+    if (png) { await Promise.all(pend); if (encErr) throw encErr; }
+    else { await venc.flush(); if (aenc) await aenc.flush(); muxer.finalize(); await out.close(); }
+    st.textContent = (RENDER.cancel ? 'Cancelado: se guardó lo renderizado hasta ' : 'Listo: ') + fmtTime(i / fps) + ' de video en ' + fmtTime((performance.now() - t0) / 1000) +
+      (png ? ' · ' + i + ' cuadros PNG en la carpeta ' + base : '') + '.';
+    if (!RENDER.cancel) RENDER.done = png ? base + '/' : base + '.' + fmt;
   } catch (e) {
     st.textContent = 'Error al renderizar: ' + e.message;
-    try { await out.abort(); } catch (e2) {}
+    if (out) try { await out.abort(); } catch (e2) {}
   } finally {
-    try { venc.close(); if (aenc) aenc.close(); } catch (e) {}
+    try { if (venc) venc.close(); if (aenc) aenc.close(); } catch (e) {}
+    await Promise.allSettled(pend);
+    setRes(prevRes);
     RENDER.active = false;
     $('renderGo').disabled = false; $('renderStop').disabled = true; $('rec').disabled = false;
     splats.playing = wasPlaying; setPlaying(wasPlaying);
@@ -1297,7 +1431,222 @@ async function startRender() {
     last = performance.now();
   }
 }
+// ---------- Guía de proyecto ----------
+// Pasos de principio a fin; cada uno se marca solo cuando su condición se cumple
+const ONB = [
+  { t: 'Proyecto', d: 'Ponle nombre al proyecto: escenas, música, video y ajustes se guardan solos en la carpeta proyectos/<nombre>/ y vuelven al recargar o al abrirlo otro día.',
+    ok: () => !!PRJ.name, info: () => PRJ.name ? 'proyectos/' + PRJ.name + '/' : 'Sin proyecto: no se guarda nada',
+    acts: [['Nuevo / abrir', prjDialog]] },
+  { t: 'Formato del domo', d: 'El planetario recomienda domemaster 210° (también acepta 180°). En 210° la guía marca el horizonte: lo que queda debajo se ve en los costados de la cúpula.',
+    ok: () => +P.dome.fov === 210, info: () => 'Ahora: ' + P.dome.fov + '°',
+    acts: [['Usar 210°', () => set('dome', 'fov', '210')]] },
+  { t: 'Contenido', d: 'Activa las capas que vas a usar. Las partículas funcionan solas; agrega escenas de splats (.ply / .splat) y/o un video. Para una secuencia, ponle a cada escena los segundos que dura.',
+    ok: () => P.particles.on || splats.scenes.length > 0 || video.has,
+    info: () => [P.particles.on && 'partículas', splats.scenes.length && splats.scenes.length + ' escena(s)', video.has && 'video'].filter(Boolean).join(' · ') || 'Sin capas con contenido',
+    acts: [['Agregar escenas', () => $('sceneFile').click()], ['Cargar video', () => $('videoFile').click()]] },
+  { t: 'Canción guía', d: 'La canción marca la duración del render y a qué reacciona todo (no queda en el video). Para ajustar la reacción antes, elígela también en AUDIO → Archivo y mira el domo en vivo.',
+    ok: () => !!RENDER.song, info: () => $('songName').textContent || 'Sin canción',
+    acts: [['Elegir canción', () => $('songFile').click()]] },
+  { t: 'Formato de salida', d: 'Lo que pide el planetario: MP4 H.265, 4096×4096, 30 cuadros/seg, sin audio.',
+    ok: () => $('renderFmt').value === 'mp4' && $('renderRes').value === '4096' && $('renderFps').value === '30',
+    info: () => $('renderFmt').selectedOptions[0].text + ' · ' + $('renderRes').value + ' · ' + $('renderFps').value + ' fps',
+    acts: [['Ajustar al planetario', () => { $('renderFmt').value = 'mp4'; $('renderRes').value = '4096'; $('renderFps').value = '30'; $('renderFmt').onchange(); }]] },
+  { t: 'Renderizar', d: 'Elige dónde guardar y deja la pestaña abierta hasta que termine: tarda bastante más que la canción. Para la primera prueba usa una canción corta.',
+    ok: () => !!RENDER.done, info: () => $('renderStatus').textContent,
+    acts: [['Renderizar', startRender, () => !RENDER.song || RENDER.active], ['Cancelar', () => { RENDER.cancel = true; }, () => !RENDER.active]] },
+  { t: 'Verificar', d: 'Abre el MP4 en QuickTime: debe verse fluido y el círculo tocar los bordes. Para confirmar el formato, en Terminal (con ffmpeg instalado):',
+    code: () => 'ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,r_frame_rate -of csv=p=0 "' + (RENDER.done || 'domo-4096-cancion.mp4') + '"\n→ debe decir: hevc,4096,4096,30/1',
+    ok: () => onbVerified, acts: [['Todo bien', () => { onbVerified = true; }]] }
+];
+let onbCur = 0, onbVerified = false;
+function onbBuild() {
+  const ol = $('onbSteps'); ol.innerHTML = '';
+  ONB.forEach((s, i) => {
+    const li = document.createElement('li'); li.classList.toggle('cur', i === onbCur);
+    const hd = document.createElement('button'); hd.className = 'st';
+    hd.innerHTML = '<span class="n">' + (i + 1) + '</span>'; hd.append(s.t);
+    hd.onclick = () => { onbCur = i; onbBuild(); };
+    li.append(hd);
+    if (i === onbCur) {
+      const bd = document.createElement('div'); bd.className = 'bd';
+      const d = document.createElement('div'); d.className = 'note'; d.textContent = s.d; bd.append(d);
+      if (s.code) { const c = document.createElement('code'); c.dataset.code = ''; bd.append(c); }
+      if (s.info) { const f = document.createElement('div'); f.className = 'status'; f.dataset.info = ''; bd.append(f); }
+      if (s.acts) {
+        const g = document.createElement('div'); g.className = 'g2';
+        s.acts.forEach(([l, fn, dis]) => { const b = document.createElement('button'); b.textContent = l; b.onclick = () => { fn(); onbTick(); }; b.dis = dis; g.append(b); });
+        bd.append(g);
+      }
+      li.append(bd);
+    }
+    ol.append(li);
+  });
+  $('onbPrev').disabled = onbCur === 0;
+  $('onbNext').textContent = onbCur === ONB.length - 1 ? 'Terminar' : 'Siguiente';
+  onbTick();
+}
+function onbTick() {
+  if ($('onb').hidden) return;
+  const lis = $('onbSteps').children, s = ONB[onbCur], cur = lis[onbCur], min = $('onb').classList.contains('min');
+  $('onbTitle').textContent = min ? 'GUÍA · ' + (onbCur + 1) + '/' + ONB.length + ' · ' + s.t + (s.ok() ? ' ✓' : '') : 'GUÍA · NUEVO PROYECTO';
+  $('onbMin').textContent = min ? '▢' : '—'; $('onbMin').title = min ? 'Abrir (H)' : 'Minimizar (H o Esc)';
+  ONB.forEach((x, i) => lis[i].classList.toggle('ok', !!x.ok()));
+  const f = cur.querySelector('[data-info]'); if (f) f.textContent = s.info();
+  const c = cur.querySelector('[data-code]'); if (c) c.textContent = s.code();
+  cur.querySelectorAll('.bd button').forEach(b => { if (b.dis) b.disabled = b.dis(); });
+}
+// La guía está abierta, minimizada (una barrita con el paso actual) u oculta; se recuerda al recargar
+function onbShow(mode) {
+  const el = $('onb'); el.hidden = mode === 'off'; el.classList.toggle('min', mode === 'min');
+  try { localStorage.setItem('domo-onb', mode); } catch (e) {}
+  if (mode !== 'off') onbBuild();
+}
+function onbOpen() { const k = ONB.findIndex(s => !s.ok()); onbCur = k < 0 ? ONB.length - 1 : k; onbShow('open'); }
+function onbToggle() { const el = $('onb'); onbShow(el.hidden || el.classList.contains('min') ? 'open' : 'min'); }
+setInterval(onbTick, 400);
+
 function fmtTime(sec) { sec = Math.max(0, Math.round(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s2 = sec % 60; return (h ? h + 'h ' : '') + m + 'm ' + String(s2).padStart(2, '0') + 's'; }
+
+// ---------- Proyectos ----------
+const prjFile = (name, ...parts) => 'proyectos/' + [name, ...parts].map(encodeURIComponent).join('/');
+const prjClean = n => n.replace(/[\/\\:*?"<>|]/g, '-').replace(/^[.\s]+/, '').trim().slice(0, 60);
+async function prjPut(name, parts, body) {
+  const r = await fetch('/api/proyectos/' + [name, ...parts].map(encodeURIComponent).join('/'), { method: 'PUT', body });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+}
+function prjSnapshot() {
+  return {
+    version: 1, nombre: PRJ.name, guardado: new Date().toISOString(), ajustes: P,
+    escenas: splats.scenes.filter(sc => sc.archivo).map(sc => ({ archivo: sc.archivo, label: sc.label, dur: sc.dur })),
+    musica: PRJ.music ? PRJ.music.name : null, video: PRJ.video ? PRJ.video.name : null,
+    render: { fmt: $('renderFmt').value, res: $('renderRes').value, fps: $('renderFps').value },
+    secuencia: { loop: splats.loop }
+  };
+}
+function prjUI(msg) {
+  $('prjName').textContent = PRJ.name || 'sin proyecto (no se guarda)';
+  const t = PRJ.saved && PRJ.saved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  $('prjStatus').textContent = msg || PRJ.err || (PRJ.pending ? 'Guardando archivos… no cierres ni recargues la página' : t ? 'Guardado ' + t + ' en proyectos/' + PRJ.name + '/' : '');
+  $('prjSave').disabled = !PRJ.name;
+  $('prjMusic').style.display = PRJ.music ? '' : 'none';
+  if (PRJ.music) $('prjMusic').textContent = '▶ Tocar música del proyecto: ' + PRJ.music.name;
+}
+function prjDirty() { if (!PRJ.name || PRJ.loading) return; clearTimeout(PRJ.timer); PRJ.timer = setTimeout(prjSave, 800); }
+async function prjSave() {
+  clearTimeout(PRJ.timer);
+  if (!PRJ.name || PRJ.loading) return;
+  try { await prjPut(PRJ.name, ['proyecto.json'], JSON.stringify(prjSnapshot(), null, 2)); PRJ.saved = new Date(); PRJ.err = null; }
+  catch (e) { PRJ.err = 'No se pudo guardar el proyecto (' + e.message + '). ¿Está abierto iniciar.command?'; }
+  prjUI();
+}
+// copia un archivo (escena, música, video) a la carpeta del proyecto
+async function prjUpload(dir, f) {
+  if (!PRJ.name) return;
+  PRJ.pending++; prjUI('Guardando ' + f.name + ' en el proyecto…');
+  try { await prjPut(PRJ.name, [dir, f.name], f); }
+  catch (e) { PRJ.err = 'No se pudo guardar ' + f.name + ' (' + e.message + ')'; }
+  PRJ.pending--; prjDirty(); prjUI();
+}
+function prjDelete(dir, name) {
+  if (!PRJ.name) return;
+  fetch('/api/proyectos/' + [PRJ.name, dir, name].map(encodeURIComponent).join('/'), { method: 'DELETE' }).catch(() => {});
+}
+// la música del proyecto es la canción del render y la que se puede tocar en vivo
+function setMusic(f) {
+  const old = PRJ.music; PRJ.music = f; loadSong(f); prjUI();
+  if (old && old.name !== f.name) prjDelete('musica', old.name);
+  prjUpload('musica', f);
+}
+function setVideo(f) {
+  const old = PRJ.video; PRJ.video = f; video.load(f);
+  if (old && old.name !== f.name) prjDelete('video', old.name);
+  prjUpload('video', f);
+}
+async function prjLoad(name) {
+  let d;
+  try { const r = await fetch(prjFile(name, 'proyecto.json'), { cache: 'no-store' }); if (!r.ok) return false; d = await r.json(); }
+  catch (e) { return false; }
+  PRJ.name = name; PRJ.loading = true; prjUI('Abriendo proyecto…');
+  if (d.ajustes) { P = merged(d.ajustes); save(); syncUI(); }
+  if (d.render) { [['fmt', 'renderFmt'], ['res', 'renderRes'], ['fps', 'renderFps']].forEach(([k, id]) => { if (d.render[k]) $(id).value = d.render[k]; }); $('renderFmt').onchange(); }
+  if (d.secuencia) splats.loop = $('seqLoop').checked = d.secuencia.loop !== false;
+  const L = (d.escenas || []).map(e => ({ id: 'p:' + e.archivo, label: e.label, archivo: e.archivo, url: prjFile(name, 'escenas', e.archivo), dur: e.dur || 30 }));
+  if (L.length) { splats.scenes.push(...L); renderScenes(); splats.pick(L[0]); }
+  const get = async (dir, f) => {
+    try { const r = await fetch(prjFile(name, dir, f)); return r.ok ? new File([await r.blob()], f, { type: r.headers.get('content-type') || '' }) : null; }
+    catch (e) { return null; }
+  };
+  if (d.musica) { const f = await get('musica', d.musica); if (f) { PRJ.music = f; await loadSong(f); } }
+  if (d.video) { const f = await get('video', d.video); if (f) { PRJ.video = f; video.load(f, true); } }
+  PRJ.loading = false; prjUI('Proyecto abierto: proyectos/' + name + '/');
+  return true;
+}
+async function prjDialog() {
+  const box = $('prjList'), st = $('prjDlgStatus');
+  $('prjDlg').hidden = false; st.textContent = ''; $('prjNameIn').value = ''; $('prjNameIn').focus();
+  box.innerHTML = '<div class="note">Buscando proyectos…</div>';
+  let list;
+  try { list = await (await fetch('/api/proyectos', { cache: 'no-store' })).json(); }
+  catch (e) { box.innerHTML = ''; st.textContent = 'No se pueden guardar proyectos: abre la app con iniciar.command (o python3 servidor.py).'; return; }
+  PRJ.list = list.map(x => x.nombre);
+  box.innerHTML = list.length ? '' : '<div class="note">Todavía no hay proyectos.</div>';
+  list.forEach(x => {
+    const b = document.createElement('button');
+    b.textContent = x.nombre + (x.nombre === PRJ.name ? ' (abierto)' : '') + ' · ' + new Date(x.modificado * 1000).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+    b.onclick = () => prjSwitch(x.nombre); box.append(b);
+  });
+}
+// abrir otro proyecto recarga la página: así arranca limpio
+function prjSwitch(name) { try { localStorage.setItem(PRJ_KEY, name); } catch (e) {} location.reload(); }
+async function prjCreate() {
+  const name = prjClean($('prjNameIn').value), st = $('prjDlgStatus');
+  if (!name) { st.textContent = 'Escribe un nombre.'; return; }
+  if (PRJ.list.includes(name)) { st.textContent = 'Ya existe un proyecto con ese nombre: ábrelo de la lista.'; return; }
+  if (PRJ.name) {
+    // ya hay uno abierto: el nuevo arranca vacío, con los ajustes actuales
+    const snap = Object.assign(prjSnapshot(), { nombre: name, escenas: [], musica: null, video: null });
+    try { await prjPut(name, ['proyecto.json'], JSON.stringify(snap, null, 2)); } catch (e) { st.textContent = 'No se pudo crear (' + e.message + ')'; return; }
+    return prjSwitch(name);
+  }
+  // sin proyecto: el nuevo se queda con lo que ya está cargado
+  PRJ.name = name; try { localStorage.setItem(PRJ_KEY, name); } catch (e) {}
+  $('prjDlg').hidden = true;
+  await prjSave();
+  if (!PRJ.err) {
+    splats.scenes.forEach(sc => { if (sc.file) prjUpload('escenas', sc.file); });
+    if (PRJ.music) prjUpload('musica', PRJ.music);
+    if (PRJ.video) prjUpload('video', PRJ.video);
+    prjForgetOld();
+  }
+}
+// escenas que la versión anterior guardaba en el navegador: se cargan y pasan al proyecto
+async function prjMigrate() {
+  let keys = []; try { keys = JSON.parse(localStorage.getItem('domo-scenes')) || []; } catch (e) {}
+  if (!keys.length || !navigator.storage || !navigator.storage.getDirectory) return;
+  try {
+    const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle('escenas'), files = [];
+    for (const k of keys) { try { files.push(new File([await (await dir.getFileHandle(k)).getFile()], k.slice(k.indexOf('-') + 1))); } catch (e) {} }
+    addSceneFiles(files);
+  } catch (e) {}
+  prjForgetOld();
+}
+// cuando ya están copiadas en la carpeta del proyecto, se borran del navegador
+function prjForgetOld() {
+  if (!PRJ.name) return;
+  const t = setInterval(async () => {
+    if (PRJ.pending) return;
+    clearInterval(t);
+    if (PRJ.err) return;
+    try { localStorage.removeItem('domo-scenes'); await (await navigator.storage.getDirectory()).removeEntry('escenas', { recursive: true }); } catch (e) {}
+  }, 1000);
+}
+async function prjStart() {
+  let name = null; try { name = localStorage.getItem(PRJ_KEY); } catch (e) {}
+  prjUI();
+  const ok = name && await prjLoad(name);
+  await prjMigrate();
+  if (!ok) prjDialog();
+}
 
 // ---------- Eventos ----------
 const $ = id => document.getElementById(id);
@@ -1305,17 +1654,17 @@ document.querySelectorAll('[data-src]').forEach(b => b.onclick = () => {
   const s = b.dataset.src;
   if (s === 'mic') useMic(); else if (s === 'file') $('audioFile').click(); else if (s === 'video') useVideoAudio(); else useDemo();
 });
-$('audioFile').onchange = e => { const f = e.target.files[0]; if (f) onAudioFile(f); e.target.value = ''; };
+$('audioFile').onchange = e => { const f = e.target.files[0]; if (f) { onAudioFile(f); setMusic(f); } e.target.value = ''; };
 $('pickVideo').onclick = () => $('videoFile').click();
-$('videoFile').onchange = e => { const f = e.target.files[0]; if (f) video.load(f); e.target.value = ''; };
+$('videoFile').onchange = e => { const f = e.target.files[0]; if (f) setVideo(f); e.target.value = ''; };
 $('pickScene').onclick = () => $('sceneFile').click();
 function addSceneFiles(files) {
   let first = null;
   for (const f of files) {
     if (!/\.(splat|ply)$/i.test(f.name)) continue;
     const label = f.name.replace(/\.(splat|ply)$/i, '');
-    const sc = { id: 'file:' + f.name + ':' + f.size, label, file: f, dur: loadDurations()[label] || 30 };
-    if (!splats.scenes.some(x => x.id === sc.id)) splats.scenes.push(sc);
+    const sc = { id: 'file:' + f.name + ':' + f.size, label, file: f, archivo: f.name, dur: loadDurations()[label] || 30 };
+    if (!splats.scenes.some(x => x.id === sc.id || x.archivo === sc.archivo)) { splats.scenes.push(sc); prjUpload('escenas', f); }
     first = first || sc;
   }
   if (!first) return false;
@@ -1325,9 +1674,26 @@ function addSceneFiles(files) {
   return true;
 }
 $('songPick').onclick = () => $('songFile').click();
-$('songFile').onchange = e => { const f = e.target.files[0]; if (f) loadSong(f); e.target.value = ''; };
+$('songFile').onchange = e => { const f = e.target.files[0]; if (f) setMusic(f); e.target.value = ''; };
 $('renderGo').onclick = startRender;
 $('renderStop').onclick = () => { RENDER.cancel = true; };
+$('renderFmt').onchange = () => { $('renderAudio').disabled = $('renderFmt').value !== 'webm'; };
+$('renderFmt').onchange();
+['renderFmt', 'renderRes', 'renderFps'].forEach(id => $(id).addEventListener('change', prjDirty));
+$('seqLoop').addEventListener('change', prjDirty);
+$('prjOpen').onclick = prjDialog;
+$('prjSave').onclick = prjSave;
+$('prjCreate').onclick = prjCreate;
+$('prjNameIn').onkeydown = e => { if (e.key === 'Enter') prjCreate(); };
+$('prjSkip').onclick = () => { $('prjDlg').hidden = true; };
+$('prjMusic').onclick = () => { if (PRJ.music) onAudioFile(PRJ.music); };
+window.addEventListener('beforeunload', e => { if (PRJ.pending) { e.preventDefault(); e.returnValue = ''; } });
+$('onbOpen').onclick = onbOpen;
+$('onbClose').onclick = () => onbShow('off');
+$('onbMin').onclick = onbToggle;
+$('onbTitle').onclick = () => { if ($('onb').classList.contains('min')) onbShow('open'); };
+$('onbPrev').onclick = () => { onbCur--; onbBuild(); };
+$('onbNext').onclick = () => { if (onbCur === ONB.length - 1) onbShow('min'); else { onbCur++; onbBuild(); } };
 $('seqPlay').onclick = () => setPlaying(!splats.playing);
 $('seqLoop').onchange = e => { splats.loop = e.target.checked; };
 $('sceneFile').onchange = e => { addSceneFiles(e.target.files); e.target.value = ''; };
@@ -1337,7 +1703,7 @@ document.addEventListener('drop', e => {
   const fs = [...e.dataTransfer.files];
   if (addSceneFiles(fs)) return;
   const v = fs.find(f => f.type.startsWith('video/')), a = fs.find(f => f.type.startsWith('audio/'));
-  if (v) video.load(v); else if (a) onAudioFile(a);
+  if (v) setVideo(v); else if (a) { onAudioFile(a); setMusic(a); }
 });
 $('micSel').onchange = () => { try { localStorage.setItem('domo-mic', $('micSel').value); } catch (e) {} if (A.source === 'mic') useMic(); };
 navigator.mediaDevices && navigator.mediaDevices.addEventListener && navigator.mediaDevices.addEventListener('devicechange', listMics);
@@ -1377,6 +1743,8 @@ document.addEventListener('keydown', e => {
     case 'r': toggleRec(); break;
     case 'f': fullscreen(); break;
     case 'g': toggleGuide(); break;
+    case 'h': onbToggle(); break;
+    case 'escape': if (!$('onb').hidden) onbShow('min'); break;
   }
 });
 
@@ -1384,10 +1752,12 @@ buildControls();
 setRes(2048);
 listMics();
 renderScenes();
+prjStart();
 syncUI();
 setSource('demo', 'Demo a ' + P.audio.bpm + ' BPM');
 A.demoNext = performance.now() + 400;
 requestAnimationFrame(frame);
+{ let m = null; try { m = localStorage.getItem('domo-onb'); } catch (e) {} if (!m) onbOpen(); else if (m !== 'off') onbShow(m === 'open' ? 'open' : 'min'); }
 </script>
 </body>
 </html>
