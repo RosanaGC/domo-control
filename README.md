@@ -72,7 +72,19 @@ arrastrándolos a la página. A cada escena le pones los segundos que dura y le 
 pasan de una a otra con fundido, precargando la siguiente para que el cambio no se note.
 La lista, el orden y los tiempos quedan en el proyecto.
 
-**Recorrido de la cámara** (en la capa de splats): *Órbita* gira alrededor de la escena; *Entrar y salir*
+**Ajustes por escena**: cada escena guarda sus propios ajustes de splats (recorrido, velocidad, alcance,
+inclinación, fundido, etc.). Haz clic en una escena de la lista para mostrarla y ajusta los controles:
+cambian solo esa escena (en la lista se ve el recorrido de cada una). Cuando la secuencia o el render pasan
+a otra escena se aplican los suyos, y durante el fundido cada una se mueve a su manera. **Variar al azar**
+le da a la escena elegida un movimiento distinto (recorrido, velocidad, inclinación, alcance…) para que el
+video no sea monótono; **Copiar a todas** pasa los ajustes de esa escena a las demás. Las escenas nuevas
+arrancan con los ajustes de la que está en pantalla.
+
+**Recorrido de la cámara** (en la capa de splats): *Órbita* gira alrededor de la escena; *Viajar por dentro*
+recorre todo el volumen de la escena por adentro, mirando hacia donde va (pasa entre los objetos y a veces
+los atraviesa); **Alcance** es hasta dónde llega: 1 ≈ el borde de la escena, más de 1 sale afuera y vuelve a
+entrar. **Transparencia cerca** hace transparentes los splats que pasan pegados a la cámara para que no
+tapen todo. *Entrar y salir*
 se mete y sale con vaivén regular; *Libre (va variando)* se mete y sale a ritmo irregular y va cambiando
 el radio, la altura y la inclinación de la órbita, sin repetirse. **Variación** es cuánto cambia (0 = órbita
 fija) y **Ritmo cambios** cada cuántos segundos aprox. da una vuelta de cambios. Con **Sentido** en *Alternar*,

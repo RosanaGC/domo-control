@@ -183,6 +183,11 @@ select{font:inherit;font-size:11px;color:var(--fg);background:var(--bg);border:1
           </div>
           <div class="status" id="sceneStatus"></div>
           <div class="status" id="seqInfo"></div>
+          <div class="note" id="sceneAj"></div>
+          <div class="g2">
+            <button id="ajRand" title="Recorrido, velocidad, inclinación, alcance… al azar para esta escena">Variar al azar</button>
+            <button id="ajAll" title="Los ajustes de esta escena pasan a todas">Copiar a todas</button>
+          </div>
           <div class="ctl" data-g="splats"></div>
         </div>
       </section>
@@ -294,7 +299,9 @@ const SCHEMA = {
     ...LAYER_COMMON({ on: false, blend: 'screen' }),
     { k: 'xfade', l: 'Fundido escena', min: 0.5, max: 15, step: 0.5, d: 4, u: 's' },
     { k: 'xstyle', l: 'Tipo fundido', t: 'select', opts: [['dissolve', 'Disolver'], ['black', 'Por negro']], d: 'dissolve' },
-    { k: 'path', l: 'Recorrido', t: 'select', opts: [['orbit', 'Órbita'], ['dive', 'Entrar y salir'], ['wander', 'Libre (va variando)']], d: 'orbit' },
+    { k: 'path', l: 'Recorrido', t: 'select', opts: [['orbit', 'Órbita'], ['dive', 'Entrar y salir'], ['wander', 'Libre (va variando)'], ['fly', 'Viajar por dentro']], d: 'orbit' },
+    { k: 'reach', l: 'Alcance (viaje)', min: 0.2, max: 1.6, step: 0.05, d: 0.9 },
+    { k: 'nearFade', l: 'Transparencia cerca', min: 0, max: 1, step: 0.05, d: 0.3 },
     { k: 'vary', l: 'Variación (libre)', min: 0, max: 1, step: 0.05, d: 0.6 },
     { k: 'varTime', l: 'Ritmo cambios', min: 5, max: 60, step: 1, d: 20, u: 's' },
     { k: 'musMove', l: 'Mover con música', min: 0, max: 1, step: 0.05, d: 0.5 },
@@ -684,7 +691,8 @@ function splatStats(f, n) {
   const med = a => a.slice().sort((p, q) => p - q)[a.length >> 1];
   const C = [med(xs), med(ys), med(zs)];
   const ds = xs.map((x, j) => Math.hypot(x - C[0], ys[j] - C[1], zs[j] - C[2]));
-  return { C, s: med(ds) || 1 };
+  const pc = (a, q) => a.slice().sort((p, q) => p - q)[Math.floor(q * (a.length - 1))];
+  return { C, s: med(ds) || 1, lo: [pc(xs, 0.1), pc(ys, 0.1), pc(zs, 0.1)], hi: [pc(xs, 0.9), pc(ys, 0.9), pc(zs, 0.9)] };
 }
 // Todo lo pesado (decodificar, estadísticas, textura) pasa en el worker para no trabar la animación
 const SPLAT_WORKER_LOAD = `
@@ -794,15 +802,34 @@ class SplatView {
     const nrm = v => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
     const cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
     const a1 = nrm(cr(up, Math.abs(up[0]) < 0.9 ? [1, 0, 0] : [0, 0, 1])), a2 = cr(up, a1);
-    const R = p.radius * st.s * m.wR, H = (p.height + m.wH) * st.s;
-    const a = m.pathA, rr = R * (1 + 0.25 * Math.sin(a * 2.3)) * (1 - m.depth * 0.95);
-    const rad = [0, 1, 2].map(i => Math.cos(a) * a1[i] + Math.sin(a) * a2[i]);
-    const tan = [0, 1, 2].map(i => -Math.sin(a) * a1[i] + Math.cos(a) * a2[i]);
-    const hh = H + st.s * 0.04 * Math.sin(a * 3.1);
-    const Pp = [0, 1, 2].map(i => st.C[i] + rad[i] * rr + up[i] * hh);
-    // al invertir el sentido la mirada pasa suavemente por el centro de la escena
-    const inw = 0.45 + m.depth * 0.9;
-    const look = nrm([0, 1, 2].map(i => tan[i] * m.dir * Math.cos(inw) - rad[i] * Math.sin(inw)));
+    const H = (p.height + m.wH) * st.s;
+    let Pp, look;
+    if (p.path === 'fly') {
+      // viaje por dentro: curva suave por la caja donde está el grueso de la escena; con Alcance > 1 sale y vuelve a entrar
+      const ext = v => [0, 1, 2].reduce((acc, i) => acc + Math.abs(v[i]) * (st.hi[i] - st.lo[i]) / 2, 0);
+      const E1 = ext(a1), E2 = ext(a2), E3 = ext(up), mid = [0, 1, 2].map(i => (st.lo[i] + st.hi[i]) / 2);
+      const K = p.reach * (1 + 0.35 * p.vary * Math.sin(m.fA * 0.21 + 1));
+      const at = t => {
+        const x = 0.7 * Math.sin(t) + 0.3 * Math.sin(t * 2.13 + 1), y = 0.7 * Math.sin(t * 0.77 + 2) + 0.3 * Math.sin(t * 1.71);
+        const z = 0.6 * Math.sin(t * 0.53 + 0.5) + 0.4 * Math.sin(t * 1.29 + 2);
+        return [0, 1, 2].map(i => mid[i] + (a1[i] * x * E1 + a2[i] * y * E2) * K + up[i] * (z * E3 * K * 0.5 + H));
+      };
+      // mira hacia un punto más adelante del recorrido, en horizontal para que el horizonte no se mueva
+      Pp = at(m.fA);
+      const ah = at(m.fA + 0.5), dv = [0, 1, 2].map(i => ah[i] - Pp[i]), du = dv[0] * up[0] + dv[1] * up[1] + dv[2] * up[2];
+      const hz = [0, 1, 2].map(i => dv[i] - up[i] * du);
+      look = Math.hypot(hz[0], hz[1], hz[2]) > 1e-6 ? nrm(hz) : a1;
+    } else {
+      const R = p.radius * st.s * m.wR;
+      const a = m.pathA, rr = R * (1 + 0.25 * Math.sin(a * 2.3)) * (1 - m.depth * 0.95);
+      const rad = [0, 1, 2].map(i => Math.cos(a) * a1[i] + Math.sin(a) * a2[i]);
+      const tan = [0, 1, 2].map(i => -Math.sin(a) * a1[i] + Math.cos(a) * a2[i]);
+      const hh = H + st.s * 0.04 * Math.sin(a * 3.1);
+      Pp = [0, 1, 2].map(i => st.C[i] + rad[i] * rr + up[i] * hh);
+      // al invertir el sentido la mirada pasa suavemente por el centro de la escena
+      const inw = 0.45 + m.depth * 0.9;
+      look = nrm([0, 1, 2].map(i => tan[i] * m.dir * Math.cos(inw) - rad[i] * Math.sin(inw)));
+    }
     const tl = Math.max(0, Math.min(90, p.tilt + m.wT)) * Math.PI / 180;
     const f = nrm([0, 1, 2].map(i => look[i] * Math.cos(tl) + up[i] * Math.sin(tl)));
     const u0 = nrm([0, 1, 2].map(i => -look[i] * Math.sin(tl) + up[i] * Math.cos(tl)));
@@ -821,7 +848,7 @@ class SplatView {
       gl.uniformMatrix4fv(this.u.view, false, new Float32Array(cam.view));
       gl.uniform2f(this.u.viewport, S, S);
       gl.uniform1f(this.u.kfish, (1 / domeHalf()) * (1 + m.punch * 0.18 * p.push));
-      gl.uniform1f(this.u.nearD, this.stats.s * 0.004);
+      gl.uniform1f(this.u.nearD, this.stats.s * (0.002 + 0.03 * p.nearFade));
       gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, this.vertexCount);
     }
     if (!this.sorting) { this.sorting = true; this.sortP = new Promise(r => this.sortRes = r); this.worker.postMessage({ cam: cam.P }); }
@@ -838,7 +865,7 @@ class Splats {
     if (this.views[0].err) onStatus(this.views[0].err);
     this.cur = 0; this.next = -1; this.t = -1; this.scene = null; this.scenes = [];
     this.preId = null; this.shownAt = 0; this.shown = false; this.awaitCur = false; this.loading = false; this.playing = false; this.loop = true;
-    this.m = { pathA: 0, dPhase: 0, depth: 0, roll: 0, dir: 1, dirT: 1, boostE: new Env(), punchE: new Env(), boost: 0, punch: 0, wA: 0, wR: 1, wH: 0, wT: 0, mus: 0, musAvg: -1 };
+    this.m = { pathA: 0, dPhase: 0, depth: 0, roll: 0, dir: 1, dirT: 1, boostE: new Env(), punchE: new Env(), boost: 0, punch: 0, wA: 0, wR: 1, wH: 0, wT: 0, mus: 0, musAvg: -1, fA: 0 };
   }
   resize(S) { this.views.forEach(v => v.resize(S)); }
   ensureScene() { if (!this.scenes.length) this.onStatus('Carga archivos .ply / .splat para empezar'); }
@@ -851,7 +878,7 @@ class Splats {
   async pick(sc, cut = false) {
     if (this.next >= 0 && this.t >= 0) { this.cur = this.next; this.next = -1; this.t = -1; }
     const other = 1 - this.cur, vi = this.views[this.cur].readyN && !cut ? other : this.cur;
-    this.scene = sc.id; this.shown = false; renderScenes();
+    this.scene = sc.id; this.shown = false; sceneApply(sc); renderScenes();
     if (vi === other && this.preId === sc.id) {
       // ya estaba precargada (o precargándose): el fundido arranca apenas esté lista
       this.preId = null; this.next = other; this.t = -1;
@@ -861,7 +888,7 @@ class Splats {
     this.preId = null; this.next = -1; this.awaitCur = vi === this.cur; this.loading = true;
     this.onStatus('Cargando ' + sc.label + '…');
     try {
-      const v = this.views[vi];
+      const v = this.views[vi]; v.sc = sc;
       const n = sc.file ? await v.readFile(sc.file) : await v.fetchScene(sc.url, pct => this.onStatus('Cargando ' + sc.label + '… ' + pct + '%'));
       if (this.scene !== sc.id) return;
       this.loading = false;
@@ -873,7 +900,7 @@ class Splats {
   }
   async preload(sc) {
     this.preId = sc.id;
-    const v = this.views[1 - this.cur];
+    const v = this.views[1 - this.cur]; v.sc = sc;
     try { await (sc.file ? v.readFile(sc.file) : v.fetchScene(sc.url, () => {})); }
     catch (e) { if (this.preId === sc.id && e.message !== 'cancel') this.preId = null; }
   }
@@ -911,6 +938,7 @@ class Splats {
       auto = (0.5 - 0.5 * Math.cos(m.dPhase)) * (0.7 + 0.3 * Math.sin(m.dPhase * 0.29 + 0.8));
       tH = 0.1 * Math.sin(m.dPhase * 0.37 + 1);
     }
+    else if (p.path === 'fly') m.fA += dt * (p.speed * 0.06 + m.boost * 0.12 * p.push);
     else if (p.path === 'wander') {
       // "Libre": senos de períodos que no coinciden, así nunca se repite igual; la música lo acelera un poco
       m.wA += dt * (1 + m.boost * 0.15 * p.push) / p.varTime;
@@ -946,8 +974,10 @@ class Splats {
     const nx = this.upcoming();
     if (nx && this.next < 0 && this.shown && !this.loading && this.views[this.cur].ready && this.preId !== nx.id && nx.id !== this.scene) this.preload(nx);
 
-    this.views[this.cur].render(m, p, true);
-    if (this.next >= 0) this.views[this.next].render(m, p, this.t >= 0);
+    // en el fundido cada escena se mueve con sus propios ajustes
+    const vp = v => v.sc && v.sc.aj ? v.sc.aj : p;
+    this.views[this.cur].render(m, vp(this.views[this.cur]), true);
+    if (this.next >= 0) this.views[this.next].render(m, vp(this.views[this.next]), this.t >= 0);
     this.p = p;
   }
   draws() {
@@ -1077,7 +1107,9 @@ function show(g, k) {
   if (c.out) c.out.textContent = t === 'range' ? fmt(v, c.s.step) + (c.s.u || '') : '';
 }
 function set(g, k, v) {
-  P[g][k] = v; show(g, k); save();
+  P[g][k] = v; show(g, k);
+  if (g === 'splats' && k !== 'on') { const sc = curScene(); if (sc) { sc.aj[k] = v; if (k === 'path') renderScenes(); } }
+  save();
   if (k === 'on') onLayers();
   if (g === 'dome') updateGuide();
   if (g === 'audio' && k === 'bpm' && A.source === 'demo') document.getElementById('audioStatus').textContent = 'Demo a ' + v + ' BPM';
@@ -1125,14 +1157,44 @@ function buildControls() {
 function syncUI() { for (const key in CTL) { const [g, k] = key.split('.'); show(g, k); } onLayers(); updateGuide(); }
 function loadDurations() { try { return JSON.parse(localStorage.getItem(DUR_STORE)) || {}; } catch (e) { return {}; } }
 function saveDuration(sc) { const d = loadDurations(); d[sc.label] = sc.dur; try { localStorage.setItem(DUR_STORE, JSON.stringify(d)); } catch (e) {} prjDirty(); }
+// Cada escena guarda sus propios ajustes de splats (todo menos encendido); al mostrarla se aplican
+const sceneAjFrom = src => { const o = { ...DEF.splats, ...src }; delete o.on; return o; };
+const curScene = () => splats.scenes.find(s => s.id === splats.scene);
+function sceneApply(sc) {
+  if (!sc.aj) sc.aj = sceneAjFrom(P.splats);
+  for (const k in sc.aj) { P.splats[k] = sc.aj[k]; show('splats', k); }
+  save(); sceneAjUI();
+}
+function sceneAjUI() {
+  const sc = curScene();
+  $('sceneAj').textContent = sc ? 'Los ajustes de abajo son solo de «' + sc.label + '». Elige otra escena en la lista para ajustarla.' : 'Cada escena guarda sus propios ajustes.';
+  $('ajRand').disabled = $('ajAll').disabled = !sc;
+}
+// rangos de "Variar al azar": movimientos distintos pero razonables para el domo
+const AJ_RAND = { path: ['orbit', 'dive', 'wander', 'fly', 'fly'], dir: ['cw', 'ccw', 'alt'], speed: [0.5, 1.8], tilt: [15, 60], radius: [0.3, 0.9],
+  height: [-0.15, 0.3], roll: [-0.12, 0.12], depth: [0, 0.4], vary: [0.3, 0.9], varTime: [10, 40], reach: [0.6, 1.3], musMove: [0.3, 0.8] };
+function sceneRandom() {
+  for (const k in AJ_RAND) {
+    const r = AJ_RAND[k], spec = SCHEMA.splats.find(x => x.k === k);
+    const v = typeof r[0] === 'string' ? r[Math.floor(Math.random() * r.length)] : Math.round((r[0] + Math.random() * (r[1] - r[0])) / spec.step) * spec.step;
+    set('splats', k, typeof v === 'number' ? +v.toFixed(4) : v);
+  }
+}
+function sceneCopyAll() {
+  const sc = curScene(); if (!sc || !confirm('¿Copiar los ajustes de «' + sc.label + '» a todas las escenas?')) return;
+  splats.scenes.forEach(x => { x.aj = sceneAjFrom(sc.aj); });
+  renderScenes();
+}
+const PATH_TAG = { orbit: 'órbita', dive: 'entra y sale', wander: 'libre', fly: 'viaje' };
 function renderScenes() {
+  sceneAjUI();
   prjDirty();
   const box = document.getElementById('scenes'); box.innerHTML = '';
   const L = splats.scenes;
   if (!L.length) { box.innerHTML = '<div class="note">Sin escenas. Agrega archivos y define cuántos segundos dura cada una.</div>'; return; }
   L.forEach((sc, i) => {
     const row = document.createElement('div'); row.className = 'srow' + (splats.scene === sc.id ? ' cur' : '');
-    const name = document.createElement('button'); name.className = 'name'; name.textContent = (i + 1) + '. ' + sc.label; name.title = 'Mostrar ahora (con fundido)';
+    const name = document.createElement('button'); name.className = 'name'; name.textContent = (i + 1) + '. ' + sc.label + (sc.aj ? ' · ' + PATH_TAG[sc.aj.path] : ''); name.title = 'Mostrar ahora (con fundido)';
     name.onclick = () => splats.pick(sc);
     const dur = document.createElement('input'); dur.type = 'number'; dur.min = 1; dur.step = 1; dur.value = sc.dur; dur.title = 'Segundos en pantalla';
     dur.onchange = () => { sc.dur = Math.max(1, +dur.value || 1); dur.value = sc.dur; saveDuration(sc); };
@@ -1440,7 +1502,7 @@ const ONB = [
   { t: 'Formato del domo', d: 'El planetario recomienda domemaster 210° (también acepta 180°). En 210° la guía marca el horizonte: lo que queda debajo se ve en los costados de la cúpula.',
     ok: () => +P.dome.fov === 210, info: () => 'Ahora: ' + P.dome.fov + '°',
     acts: [['Usar 210°', () => set('dome', 'fov', '210')]] },
-  { t: 'Contenido', d: 'Activa las capas que vas a usar. Las partículas funcionan solas; agrega escenas de splats (.ply / .splat) y/o un video. Para una secuencia, ponle a cada escena los segundos que dura.',
+  { t: 'Contenido', d: 'Activa las capas que vas a usar. Las partículas funcionan solas; agrega escenas de splats (.ply / .splat) y/o un video. Para una secuencia, ponle a cada escena los segundos que dura; cada escena guarda sus propios ajustes de movimiento (clic en ella y ajusta, o «Variar al azar»).',
     ok: () => P.particles.on || splats.scenes.length > 0 || video.has,
     info: () => [P.particles.on && 'partículas', splats.scenes.length && splats.scenes.length + ' escena(s)', video.has && 'video'].filter(Boolean).join(' · ') || 'Sin capas con contenido',
     acts: [['Agregar escenas', () => $('sceneFile').click()], ['Cargar video', () => $('videoFile').click()]] },
@@ -1517,7 +1579,7 @@ async function prjPut(name, parts, body) {
 function prjSnapshot() {
   return {
     version: 1, nombre: PRJ.name, guardado: new Date().toISOString(), ajustes: P,
-    escenas: splats.scenes.filter(sc => sc.archivo).map(sc => ({ archivo: sc.archivo, label: sc.label, dur: sc.dur })),
+    escenas: splats.scenes.filter(sc => sc.archivo).map(sc => ({ archivo: sc.archivo, label: sc.label, dur: sc.dur, ajustes: sc.aj })),
     musica: PRJ.music ? PRJ.music.name : null, video: PRJ.video ? PRJ.video.name : null,
     render: { fmt: $('renderFmt').value, res: $('renderRes').value, fps: $('renderFps').value },
     secuencia: { loop: splats.loop }
@@ -1570,7 +1632,7 @@ async function prjLoad(name) {
   if (d.ajustes) { P = merged(d.ajustes); save(); syncUI(); }
   if (d.render) { [['fmt', 'renderFmt'], ['res', 'renderRes'], ['fps', 'renderFps']].forEach(([k, id]) => { if (d.render[k]) $(id).value = d.render[k]; }); $('renderFmt').onchange(); }
   if (d.secuencia) splats.loop = $('seqLoop').checked = d.secuencia.loop !== false;
-  const L = (d.escenas || []).map(e => ({ id: 'p:' + e.archivo, label: e.label, archivo: e.archivo, url: prjFile(name, 'escenas', e.archivo), dur: e.dur || 30 }));
+  const L = (d.escenas || []).map(e => ({ id: 'p:' + e.archivo, label: e.label, archivo: e.archivo, url: prjFile(name, 'escenas', e.archivo), dur: e.dur || 30, aj: sceneAjFrom(e.ajustes || P.splats) }));
   if (L.length) { splats.scenes.push(...L); renderScenes(); splats.pick(L[0]); }
   const get = async (dir, f) => {
     try { const r = await fetch(prjFile(name, dir, f)); return r.ok ? new File([await r.blob()], f, { type: r.headers.get('content-type') || '' }) : null; }
@@ -1663,7 +1725,7 @@ function addSceneFiles(files) {
   for (const f of files) {
     if (!/\.(splat|ply)$/i.test(f.name)) continue;
     const label = f.name.replace(/\.(splat|ply)$/i, '');
-    const sc = { id: 'file:' + f.name + ':' + f.size, label, file: f, archivo: f.name, dur: loadDurations()[label] || 30 };
+    const sc = { id: 'file:' + f.name + ':' + f.size, label, file: f, archivo: f.name, dur: loadDurations()[label] || 30, aj: sceneAjFrom(P.splats) };
     if (!splats.scenes.some(x => x.id === sc.id || x.archivo === sc.archivo)) { splats.scenes.push(sc); prjUpload('escenas', f); }
     first = first || sc;
   }
@@ -1682,6 +1744,8 @@ $('renderFmt').onchange();
 ['renderFmt', 'renderRes', 'renderFps'].forEach(id => $(id).addEventListener('change', prjDirty));
 $('seqLoop').addEventListener('change', prjDirty);
 $('prjOpen').onclick = prjDialog;
+$('ajRand').onclick = sceneRandom;
+$('ajAll').onclick = sceneCopyAll;
 $('prjSave').onclick = prjSave;
 $('prjCreate').onclick = prjCreate;
 $('prjNameIn').onkeydown = e => { if (e.key === 'Enter') prjCreate(); };
@@ -1716,7 +1780,7 @@ $('guideBtn').onclick = toggleGuide;
 document.querySelectorAll('.fold').forEach(b => b.onclick = () => {
   const s = b.closest('.layer'); s.classList.toggle('closed'); b.textContent = s.classList.contains('closed') ? '▸' : '▾';
 });
-$('reset').onclick = () => { P = merged(null); save(); syncUI(); };
+$('reset').onclick = () => { P = merged(null); const sc = curScene(); if (sc) sc.aj = sceneAjFrom(P.splats); save(); syncUI(); renderScenes(); };
 $('export').onclick = () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' }));
@@ -1725,7 +1789,7 @@ $('export').onclick = () => {
 $('import').onclick = () => $('importFile').click();
 $('importFile').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  try { P = merged(JSON.parse(await f.text())); save(); syncUI(); } catch (err) { alert('Archivo de ajustes no válido'); }
+  try { P = merged(JSON.parse(await f.text())); const sc = curScene(); if (sc) sc.aj = sceneAjFrom(P.splats); save(); syncUI(); renderScenes(); } catch (err) { alert('Archivo de ajustes no válido'); }
 };
 document.addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
