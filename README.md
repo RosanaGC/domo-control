@@ -84,7 +84,8 @@ arrancan con los ajustes de la que está en pantalla.
 recorre todo el volumen de la escena por adentro, mirando hacia donde va (pasa entre los objetos y a veces
 los atraviesa); **Alcance** es hasta dónde llega: 1 ≈ el borde de la escena, más de 1 sale afuera y vuelve a
 entrar. **Transparencia cerca** hace transparentes los splats que pasan pegados a la cámara para que no
-tapen todo. *Entrar y salir*
+tapen todo. **Variación altura** (en *Viajar por dentro* y *Libre*) es cuánto sube y baja la cámara mientras
+recorre: 0 casi a la misma altura, 1 recorre de abajo arriba. *Entrar y salir*
 se mete y sale con vaivén regular; *Libre (va variando)* se mete y sale a ritmo irregular y va cambiando
 el radio, la altura y la inclinación de la órbita, sin repetirse. **Variación** es cuánto cambia (0 = órbita
 fija) y **Ritmo cambios** cada cuántos segundos aprox. da una vuelta de cambios. Con **Sentido** en *Alternar*,
