@@ -101,6 +101,28 @@ bajo los botones de audio y aprieta **Mic**. Ajusta **Ganancia** y **Umbral golp
 **Fluidez** decide cómo se mueve con los golpes: en 0 cada golpe da un tirón corto (acelera y frena);
 en 1 los golpes se suman a un impulso que sube y baja lento, y el movimiento sigue sin saltos. Por defecto 0,8.
 
+**Secuencia de imágenes** (en VIDEO): una carpeta de JPG / PNG numerados, por ejemplo una lluvia de
+estrellas domemaster, se usa como fondo sin compresión intermedia. Cada cuadro se lee del disco cuando
+hace falta (no se copia al proyecto: al abrirlo otro día hay que volver a elegir la carpeta). Para usarla
+tal cual, apaga Zoom, Destello, Separación RGB y Giro golpe, y pon Giro base en 0. **Apertura fisheye** dice
+de qué apertura es el material: con 210° en un domo de 210° pasa tal cual; uno de 180° ocupa hasta el
+horizonte (es lo correcto) y el anillo de afuera queda negro.
+
+**Constelación** (capa 4): las estrellas salen de la lluvia, frenan y quedan fijas una por una; después
+se trazan las uniones y aparece la figura. **Empieza** y **Formación** son segundos de la canción (o de la
+secuencia); **Ir a la constelación** salta a ese momento para verla en vivo. Mover, Escala y Girar la ubican
+en el domo (Girar 180° la muestra como se ve desde el hemisferio sur). Trae Orión de ejemplo; con **Cargar constelación** se usa otro `.json`, que se guarda en el proyecto.
+
+Para armar una constelación desde una ilustración (estrellas brillantes, líneas claras que las unen y la
+figura en un tono más claro que el fondo):
+```
+python3 constelacion/descomponer.py mi-imagen.png
+```
+Escribe `mi-imagen.json` al lado, con las estrellas, las uniones y la silueta adentro: se carga con
+**Cargar constelación**. Si no detecta bien algo, los umbrales se ajustan (`--estrella`, `--linea`,
+`--silueta`; ver `--help`). Si la secuencia trae cuadros rotos (casi negros, mucho más livianos que sus
+vecinos), se muestra el anterior en su lugar.
+
 **Formato domo**: 210° (recomendado) o 180°. En 210° la guía en pantalla marca el horizonte.
 
 **Atajos**
@@ -109,7 +131,7 @@ en 1 los golpes se suman a un impulso que sube y baja lento, y el movimiento sig
 |---|---|
 | `Espacio` | golpe manual |
 | `T` | tap tempo |
-| `1` `2` `3` | activar / apagar partículas, splats, video |
+| `1` `2` `3` `4` | activar / apagar partículas, splats, video, constelación |
 | `N` / `B` | escena siguiente / anterior |
 | `P` | secuencia play / pausa |
 | `D` | invertir sentido de giro |
@@ -152,5 +174,8 @@ para revisar, pero comprime con pérdida.
 - `lib/mp4-muxer.js` — [mp4-muxer](https://github.com/Vanilagy/mp4-muxer) 5.2.2 (MIT), arma el MP4 H.265 del render.
 - `lib/webm-muxer.js` — [webm-muxer](https://github.com/Vanilagy/webm-muxer) 5.1.4 (MIT), arma el WebM del render.
 - `Domo Visuales.dc.html`, `Domo Splats.dc.html`, `Domo Video.dc.html`, `support.js` — versiones originales separadas (necesitan internet).
+- `constelacion/orion-imagen.json` — Orión con silueta para la capa Constelación (sale de `descomponer.py`);
+  `constelacion/orion.json` — Orión con las posiciones reales del cielo y la figura en trazos. `constelacion/constelacion.py` hace lo mismo
+  fuera de la app, sobre una secuencia JPG y directo a ffmpeg (`python3 constelacion/constelacion.py constelacion/orion.json --prueba`).
 - `index.html` — menú de inicio. `iniciar.command` — arranca el servidor local.
 - `servidor.py` — servidor local: sirve la app y guarda los proyectos en `proyectos/`.

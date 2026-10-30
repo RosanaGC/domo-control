@@ -15,3 +15,9 @@ escenas/
 
 # Proyectos (escenas, música, video y ajustes de cada proyecto): pesados y personales
 proyectos/
+
+# Constelación: la pintura recortada y lo que la lleva adentro, y lo que sale de imágenes de terceros
+constelacion/buceo-figura.png
+constelacion/buceo.json
+constelacion/orion-imagen.json
+__pycache__/

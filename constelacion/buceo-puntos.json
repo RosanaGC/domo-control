@@ -1,0 +1,27 @@
+{
+  "_ayuda": "Estrellas sobre buceo-figura.png, en píxeles de la pintura (904×1600): nombre, x, y, magnitud (menor = más brillante). Se fijan en este orden. Después: python3 figura.py buceo-figura.png buceo-puntos.json",
+  "estrellas": [
+    ["cabeza", 608, 420, 1.2],
+    ["pie_i", 510, 1278, 0.6],
+    ["mano_i", 415, 905, 1.4],
+    ["mano_d", 770, 920, 1.6],
+    ["hombro_i", 500, 616, 0.8],
+    ["hombro_d", 710, 620, 1.0],
+    ["pie_d", 616, 1330, 0.9],
+    ["cuello", 600, 612, 1.6],
+    ["cintura", 595, 800, 2.2],
+    ["cadera_i", 535, 860, 1.8],
+    ["cadera_d", 640, 865, 1.9],
+    ["rodilla_i", 525, 1070, 1.7],
+    ["rodilla_d", 625, 1070, 1.8]
+  ],
+  "uniones": [
+    ["cabeza", "cuello"],
+    ["cuello", "hombro_i"], ["hombro_i", "mano_i"],
+    ["cuello", "hombro_d"], ["hombro_d", "mano_d"],
+    ["cuello", "cintura"],
+    ["cintura", "cadera_i"], ["cintura", "cadera_d"], ["cadera_i", "cadera_d"],
+    ["cadera_i", "rodilla_i"], ["rodilla_i", "pie_i"],
+    ["cadera_d", "rodilla_d"], ["rodilla_d", "pie_d"]
+  ]
+}

@@ -164,8 +164,12 @@ select{font:inherit;font-size:11px;color:var(--fg);background:var(--bg);border:1
       <section class="layer" data-layer="video">
         <header><label><input type="checkbox" data-on="video"> VIDEO <span class="key">3</span></label><button class="fold">▾</button></header>
         <div class="body">
-          <button class="dash" id="pickVideo">Cargar video</button>
+          <div class="g2">
+            <button class="dash" id="pickVideo">Cargar video</button>
+            <button class="dash" id="pickSeq" title="Carpeta de JPG / PNG numerados (ej. una lluvia de estrellas domemaster): se usan sin compresión intermedia">Secuencia de imágenes</button>
+          </div>
           <input id="videoFile" type="file" accept="video/*" hidden>
+          <input id="seqDir" type="file" webkitdirectory hidden>
           <div class="status" id="videoStatus">Sin video</div>
           <div class="ctl" data-g="video"></div>
         </div>
@@ -195,6 +199,25 @@ select{font:inherit;font-size:11px;color:var(--fg);background:var(--bg);border:1
       <section class="layer" data-layer="particles">
         <header><label><input type="checkbox" data-on="particles"> PARTÍCULAS <span class="key">1</span></label><button class="fold">▾</button></header>
         <div class="body"><div class="ctl" data-g="particles"></div></div>
+      </section>
+
+      <section class="layer" data-layer="constel">
+        <header><label><input type="checkbox" data-on="constel"> CONSTELACIÓN <span class="key">4</span></label><button class="fold">▾</button></header>
+        <div class="body">
+          <div class="note">Las estrellas salen de la lluvia, frenan y quedan fijas; después se trazan las líneas y aparece la figura. Los tiempos son segundos de la canción (o de la secuencia).</div>
+          <div class="g2">
+            <button class="dash" id="constelPick">Cargar constelación (.json)</button>
+            <button class="dash" id="constelOrion">Orión (ejemplo)</button>
+          </div>
+          <input id="constelFile" type="file" accept="application/json,.json" hidden>
+          <div class="status" id="constelStatus"></div>
+          <div class="g2">
+            <button id="tlZero" title="La secuencia y la constelación vuelven al segundo 0">⏮ Desde 0</button>
+            <button id="tlGo" title="Salta a 3 s antes de que empiece a formarse">Ir a la constelación</button>
+          </div>
+          <div class="status" id="tlInfo"></div>
+          <div class="ctl" data-g="constel"></div>
+        </div>
       </section>
     </div>
 
@@ -252,7 +275,7 @@ select{font:inherit;font-size:11px;color:var(--fg);background:var(--bg);border:1
 
     <div class="keys">
       <b>␣</b>golpe manual · <b>T</b>tap tempo<br>
-      <b>1</b><b>2</b><b>3</b>activar / apagar capas<br>
+      <b>1</b><b>2</b><b>3</b><b>4</b>activar / apagar capas<br>
       <b>N</b><b>B</b>escena siguiente / anterior (con fundido)<br>
       <b>D</b>invertir sentido de giro · <b>P</b>secuencia play / pausa<br>
       <b>R</b>grabar · <b>F</b>pantalla completa · <b>G</b>guía domo<br>
@@ -320,6 +343,7 @@ const SCHEMA = {
   video: [
     ...LAYER_COMMON({ on: false, blend: 'source-over' }),
     { k: 'mode', l: 'Formato', t: 'select', opts: [['fish', 'Fisheye'], ['flat', 'Normal'], ['eq', '360°']], d: 'flat' },
+    { k: 'fishFov', l: 'Apertura fisheye', t: 'select', opts: [['180', '180°'], ['210', '210°']], d: '180' },
     { k: 'intensity', l: 'Intensidad', min: 0, max: 3, step: 0.1, d: 1 },
     { k: 'spin', l: 'Giro base', min: -0.3, max: 0.3, step: 0.01, d: 0.02 },
     { k: 'zoomFx', l: 'Zoom', t: 'bool', d: true },
@@ -328,7 +352,32 @@ const SCHEMA = {
     { k: 'rotateFx', l: 'Giro golpe', t: 'bool', d: true },
     { k: 'rateFx', l: 'Velocidad x energía', t: 'bool', d: false },
     { k: 'flatFov', l: 'Ancho (normal)', min: 60, max: 220, step: 5, d: 140, u: '°' },
-    { k: 'flatElev', l: 'Altura (normal)', min: 0, max: 80, step: 1, d: 25, u: '°' }
+    { k: 'flatElev', l: 'Altura (normal)', min: 0, max: 80, step: 1, d: 25, u: '°' },
+    { k: 'seqFps', l: 'Cuadros/seg secuencia', t: 'select', opts: [['24', '24'], ['25', '25'], ['30', '30'], ['60', '60']], d: '30' }
+  ],
+  constel: [
+    ...LAYER_COMMON({ on: false, blend: 'lighter' }),
+    { k: 'start', l: 'Empieza', min: 0, max: 600, step: 0.5, d: 50, u: 's' },
+    { k: 'form', l: 'Formación', min: 2, max: 180, step: 0.5, d: 40, u: 's' },
+    { k: 'travel', l: 'Viaje estrella', min: 0, max: 10, step: 0.1, d: 4, u: 's' },
+    { k: 'shadow', l: 'Aparece sombra', min: 0, max: 40, step: 0.5, d: 12, u: 's' },
+    { k: 'lines', l: 'Trazo líneas', min: 0, max: 30, step: 0.5, d: 8, u: 's' },
+    { k: 'figure', l: 'Aparece figura', min: 0, max: 30, step: 0.5, d: 8, u: 's' },
+    { k: 'starSize', l: 'Tamaño estrellas', min: 0.3, max: 3, step: 0.05, d: 1 },
+    { k: 'starAmt', l: 'Brillo estrellas', min: 0.3, max: 2.5, step: 0.05, d: 1.15 },
+    { k: 'shadowAmt', l: 'Sombra', min: 0, max: 1, step: 0.02, d: 0.3 },
+    { k: 'shadowCol', l: 'Color sombra', t: 'color', d: '#8cc4ff' },
+    { k: 'shadowSoft', l: 'Difuminado sombra', min: 0, max: 4, step: 0.05, d: 1 },
+    { k: 'figDetail', l: 'Detalle pintura', min: 0, max: 2, step: 0.05, d: 1 },
+    { k: 'lineAmt', l: 'Líneas', min: 0, max: 1.5, step: 0.05, d: 0.8 },
+    { k: 'figAmt', l: 'Contorno figura', min: 0, max: 1.5, step: 0.05, d: 0.35 },
+    { k: 'figCol', l: 'Color contorno', t: 'color', d: '#ffcc85' },
+    { k: 'react', l: 'Pulso con música', min: 0, max: 1, step: 0.05, d: 0.3 },
+    { k: 'x', l: 'Mover X', min: -0.5, max: 0.5, step: 0.005, d: 0 },
+    { k: 'y', l: 'Mover Y', min: -0.5, max: 0.5, step: 0.005, d: 0 },
+    { k: 'scale', l: 'Escala', min: 0.3, max: 2.5, step: 0.05, d: 1 },
+    { k: 'rot', l: 'Girar', min: -180, max: 180, step: 1, d: 0, u: '°' },
+    { k: 'fromCenter', l: 'Nacen del centro', t: 'bool', d: true }
   ]
 };
 const STORE = 'domo-control-v1';
@@ -338,7 +387,7 @@ function merged(src) { const o = {}; for (const g in DEF) o[g] = { ...DEF[g], ..
 let P = (() => { try { return merged(JSON.parse(localStorage.getItem(STORE))); } catch (e) { return merged(null); } })();
 function save() { try { localStorage.setItem(STORE, JSON.stringify(P)); } catch (e) {} prjDirty(); }
 // Proyecto abierto: lo que se cambia se guarda solo en proyectos/<nombre>/ (ver servidor.py)
-const PRJ = { name: null, loading: false, pending: 0, timer: 0, saved: null, err: null, list: [], music: null, video: null };
+const PRJ = { name: null, loading: false, pending: 0, timer: 0, saved: null, err: null, list: [], music: null, video: null, constel: null };
 const PRJ_KEY = 'domo-proyecto';
 
 // Envolvente con ataque suave: los golpes suben la meta y el valor la sigue con rampa
@@ -403,11 +452,11 @@ function onAudioFile(f) {
   if (!A.elSrc) A.elSrc = A.ac.createMediaElementSource(audioEl);
   A.elSrc.connect(A.an); A.elSrc.connect(A.ac.destination); A.elSrc.connect(A.dest); A.cur = A.elSrc;
   audioEl.play();
-  if (video.has) { video.el.currentTime = 0; video.el.play(); }
+  if (video.isClip) { video.el.currentTime = 0; video.el.play(); }
   setSource('file', f.name);
 }
 function useVideoAudio() {
-  if (!video.has) { document.getElementById('audioStatus').textContent = 'Primero carga un video'; return; }
+  if (!video.isClip) { document.getElementById('audioStatus').textContent = 'Primero carga un video (la secuencia de imágenes no tiene audio)'; return; }
   ensureCtx(); disconnectSrc();
   if (!A.vidSrc) A.vidSrc = A.ac.createMediaElementSource(video.el);
   A.vidSrc.connect(A.an); A.vidSrc.connect(A.ac.destination); A.vidSrc.connect(A.dest); A.cur = A.vidSrc;
@@ -996,10 +1045,10 @@ class Splats {
 
 // ---------- Capa: video ----------
 const VIDEO_FS = `precision highp float;
-uniform sampler2D tex;uniform vec2 res;uniform int mode;uniform float zoom,rot,flash,split,aspect,flatFov,flatElev,halfFov;
+uniform sampler2D tex;uniform vec2 res;uniform int mode;uniform float zoom,rot,flash,split,aspect,flatFov,flatElev,halfFov,srcHalf;
 vec3 samp(vec2 p){
  vec2 uv;
- if(mode==0){uv=p*(halfFov/1.5707963)*0.5+0.5;}
+ if(mode==0){uv=p*(halfFov/srcHalf)*0.5+0.5;if(length(uv-0.5)>0.5)return vec3(0.);}
  else{float th=length(p)*halfFov;float ph=atan(p.x,-p.y);float lat=1.5707963-th;
   if(mode==1){uv=vec2(ph/6.2831853+0.5,lat/3.14159265+0.5);}
   else{uv=vec2(ph/flatFov+0.5,(lat-flatElev)/(flatFov/aspect)+0.5);}}
@@ -1038,7 +1087,7 @@ class Video {
     const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
     const la = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(la); gl.vertexAttribPointer(la, 2, gl.FLOAT, false, 0, 0);
-    this.u = {}; ['tex', 'res', 'mode', 'zoom', 'rot', 'flash', 'split', 'aspect', 'flatFov', 'flatElev', 'halfFov'].forEach(n => this.u[n] = gl.getUniformLocation(pr, n));
+    this.u = {}; ['tex', 'res', 'mode', 'zoom', 'rot', 'flash', 'split', 'aspect', 'flatFov', 'flatElev', 'halfFov', 'srcHalf'].forEach(n => this.u[n] = gl.getUniformLocation(pr, n));
     this.tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, this.tex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -1046,8 +1095,10 @@ class Video {
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.uniform1i(this.u.tex, 0);
   }
+  get isClip() { return this.has && !this.seq; }
   load(f, keep = false) {
     const v = this.el;
+    this.dropSeq();
     if (this.url) URL.revokeObjectURL(this.url);
     this.url = URL.createObjectURL(f); v.src = this.url;
     v.onloadedmetadata = () => {
@@ -1059,6 +1110,61 @@ class Video {
       if (!P.video.on && !keep) set('video', 'on', true);
     };
   }
+  // Secuencia de imágenes (carpeta de JPG / PNG): sigue al reloj de la línea de tiempo y no se copia al proyecto.
+  // Cada cuadro se decodifica al tamaño de salida cuando hace falta; se guardan solo los cercanos.
+  loadSeq(files) {
+    const fs = [...files].filter(f => /\.(jpe?g|png|webp)$/i.test(f.name)).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    if (!fs.length) return false;
+    this.dropSeq();
+    this.el.pause();
+    if (this.url) { URL.revokeObjectURL(this.url); this.url = null; this.el.removeAttribute('src'); }
+    const name = (fs[0].webkitRelativePath || fs[0].name).split('/')[0];
+    // un cuadro que pesa mucho menos que sus vecinos está roto (casi negro): se muestra el anterior
+    const map = fs.map((_, i) => i), bad = [];
+    for (let i = 1; i < fs.length; i++) {
+      const v = fs.slice(Math.max(0, i - 5), i + 6).map(f => f.size).sort((a, b) => a - b);
+      if (fs[i].size < 0.3 * v[v.length >> 1]) { map[i] = map[i - 1]; bad.push(fs[i].name); }
+    }
+    this.seq = { files: fs, map, cache: new Map(), size: 0, shown: null, w: 1, h: 1 };
+    this.has = true;
+    const st = document.getElementById('videoStatus');
+    st.textContent = name + ' · ' + fs.length + ' cuadros';
+    createImageBitmap(fs[0]).then(b => {
+      const q = this.seq; if (!q || q.files !== fs) { b.close(); return; }
+      q.w = b.width; q.h = b.height; b.close();
+      if (Math.abs(q.w / q.h - 1) < 0.05) set('video', 'mode', 'fish');
+      st.textContent = name + ' · ' + fs.length + ' cuadros ' + q.w + '×' + q.h + ' · ' + fmtTime(fs.length / +P.video.seqFps) + ' (no se guarda en el proyecto)' +
+        (bad.length ? ' · ' + bad.length + ' cuadro(s) roto(s) reemplazado(s) por el anterior' : '');
+    }).catch(() => { st.textContent = 'No se pudo leer ' + fs[0].name; });
+    if (!P.video.on) set('video', 'on', true);
+    return true;
+  }
+  dropSeq() {
+    if (!this.seq) return;
+    this.seq.cache.forEach(e => { e.dead = true; if (e.b) e.b.close(); });
+    this.seq = null; this.has = false;
+  }
+  seqIdx(t) { const n = this.seq.files.length; return this.seq.map[((Math.floor(t * +P.video.seqFps + 1e-6) % n) + n) % n]; }
+  // pide el cuadro i y los siguientes; descarta los que quedaron lejos
+  seqWant(i, ahead) {
+    const q = this.seq, n = q.files.length, S = this.c.width;
+    if (q.size !== S) { q.cache.forEach(e => { e.dead = true; if (e.b) e.b.close(); }); q.cache.clear(); q.size = S; }
+    for (let j = 0; j <= ahead; j++) {
+      const k = (i + j) % n;
+      if (q.cache.has(k)) continue;
+      const e = { b: null, dead: false };
+      e.p = createImageBitmap(q.files[k], { resizeWidth: S, resizeHeight: S, resizeQuality: 'high', imageOrientation: 'flipY' })
+        .then(b => { if (e.dead) b.close(); else e.b = b; return e; }, () => e);
+      q.cache.set(k, e);
+    }
+    for (const [k, e] of q.cache) {
+      const d = (k - i + n) % n;
+      if (d > ahead && d < n - 8) { e.dead = true; if (e.b) e.b.close(); q.cache.delete(k); }
+    }
+    return q.cache.get(i);
+  }
+  // render: espera el cuadro exacto del tiempo t
+  seqFrame(t) { return this.seqWant(this.seqIdx(t), 4).p; }
   step(dt, now, au, p) {
     const gl = this.gl; if (!gl) return;
     const I = p.intensity, v = this.el;
@@ -1079,18 +1185,244 @@ class Video {
     const S = this.c.width;
     gl.viewport(0, 0, S, S);
     gl.bindTexture(gl.TEXTURE_2D, this.tex);
-    if (this.has && v.readyState >= 2) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, v);
+    if (this.seq) {
+      // en vivo muestra el último cuadro ya decodificado, sin esperar
+      const q = this.seq, n = q.files.length, i = this.seqIdx(tlNow(now));
+      this.seqWant(i, 6);
+      for (let j = 0; j < 8; j++) {
+        const e = q.cache.get((i - j + n) % n);
+        if (e && e.b) { if (q.shown !== e.b) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, e.b); q.shown = e.b; } break; }
+      }
+    } else if (this.has && v.readyState >= 2) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, v);
     gl.uniform2f(this.u.res, S, S);
     gl.uniform1i(this.u.mode, { fish: 0, eq: 1, flat: 2 }[p.mode] ?? 2);
     gl.uniform1f(this.u.zoom, 1 + this.zoomK * 0.14 * I);
     gl.uniform1f(this.u.rot, this.rot);
     gl.uniform1f(this.u.flash, this.flashK * 0.45 * I);
     gl.uniform1f(this.u.split, this.splitK * 0.025 * I);
-    gl.uniform1f(this.u.aspect, v.videoHeight ? v.videoWidth / v.videoHeight : 16 / 9);
+    gl.uniform1f(this.u.aspect, this.seq ? this.seq.w / this.seq.h : v.videoHeight ? v.videoWidth / v.videoHeight : 16 / 9);
     gl.uniform1f(this.u.flatFov, p.flatFov * Math.PI / 180);
     gl.uniform1f(this.u.flatElev, p.flatElev * Math.PI / 180);
     gl.uniform1f(this.u.halfFov, domeHalf());
+    gl.uniform1f(this.u.srcHalf, (+p.fishFov || 180) / 2 * Math.PI / 180);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+}
+
+// ---------- Línea de tiempo ----------
+// Reloj de la secuencia de imágenes y la constelación. En el render es el tiempo de la canción;
+// en vivo sigue a la canción si está sonando desde Archivo, y si no corre solo.
+const TL = { base: performance.now() };
+function tlNow(now) {
+  if (RENDER.active) return now / 1000;
+  if (A.source === 'file' && audioEl.src && !audioEl.paused) return audioEl.currentTime;
+  return (performance.now() - TL.base) / 1000;
+}
+function tlSeek(sec) {
+  sec = Math.max(0, sec);
+  TL.base = performance.now() - sec * 1000;
+  if (A.source === 'file' && audioEl.src) audioEl.currentTime = sec;
+}
+
+// ---------- Constelación ----------
+// Cada estrella nace cerca del centro, viaja hacia afuera como la lluvia, frena y queda fija con un destello.
+// Después se trazan las uniones y aparece la sombra: la silueta del .json (de constelacion/descomponer.py)
+// o, si no trae silueta, una sombra difusa armada con los trazos de la figura, y su contorno. Los datos (estrellas en grados de cielo, uniones y trazos)
+// vienen de un .json como constelacion/orion.json; todo se suma con luz sobre lo de abajo.
+function glowSprite(w, h, f) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d'), d = x.createImageData(w, h);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const o = (j * w + i) * 4, v = f((i + 0.5) / w * 2 - 1, (j + 0.5) / h * 2 - 1);
+    d.data[o] = 224; d.data[o + 1] = 242; d.data[o + 2] = 255; d.data[o + 3] = Math.round(255 * v);
+  }
+  x.putImageData(d, 0, 0);
+  return c;
+}
+// gaussiana que cubre ±4σ; la cruz de las estrellas brillantes cubre ±4 decaimientos a lo largo y ±4σ a lo ancho
+const STAR_DOT = glowSprite(64, 64, (x, y) => Math.exp(-8 * (x * x + y * y)));
+const STAR_SPIKE_H = glowSprite(128, 16, (x, y) => Math.exp(-4 * Math.abs(x)) * Math.exp(-8 * y * y));
+const STAR_SPIKE_V = glowSprite(16, 128, (x, y) => Math.exp(-4 * Math.abs(y)) * Math.exp(-8 * x * x));
+const ease3 = t => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
+const ease5 = t => { t = Math.min(1, Math.max(0, t)); return t * t * t * (t * (6 * t - 15) + 10); };
+function catmullRom(pts, n = 16) {
+  if (pts.length < 3) return pts;
+  const p = [pts[0], ...pts, pts[pts.length - 1]], out = [];
+  for (let i = 1; i < p.length - 2; i++) {
+    const [a, b, c, d] = [p[i - 1], p[i], p[i + 1], p[i + 2]];
+    for (let s = 0; s < n; s++) {
+      const t = s / n, t2 = t * t, t3 = t2 * t;
+      out.push([0, 1].map(k => 0.5 * (2 * b[k] + (c[k] - a[k]) * t + (2 * a[k] - 5 * b[k] + 4 * c[k] - d[k]) * t2 + (3 * b[k] - a[k] - 3 * c[k] + d[k]) * t3)));
+    }
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+class Constel {
+  constructor() {
+    this.c = document.createElement('canvas'); this.ctx = this.c.getContext('2d');
+    this.data = null; this.name = ''; this.pulse = new Env(); this.info = '';
+  }
+  resize(S) { this.c.width = this.c.height = S; }
+  draws() { return [[this.c, 1]]; }
+  setData(d, name) {
+    if (!d || !Array.isArray(d.estrellas) || !d.estrellas.length) throw new Error('el .json no tiene "estrellas"');
+    const byName = {};
+    const stars = d.estrellas.map(([n, x, y, mag], i) => (byName[n] = { n, x, y, amp: Math.min(1, Math.max(0.4, Math.pow(10, -0.2 * (mag - 0.5)))), ph: i * 2.39 }));
+    this.data = {
+      stars, centro: d.centro || [0.5, 0.5], escala: d.escala || 0.0135,
+      links: (d.uniones || []).map(([a, b]) => [byName[a], byName[b]]).filter(([a, b]) => a && b),
+      strokes: d.figura_trazos || [], fills: d.sombra_relleno || [], sil: null,
+      soft: d.sombra_difuso ?? 0.9, size: d.estrellas_tamano || 1, det: d.figura_detalle || 0
+    };
+    this.shade = null;
+    if (d.silueta && d.silueta.png) {
+      // silueta en blanco sobre negro (alfa = brillo) o figura en gris con transparencia (de figura.py):
+      // queda como máscara con el gris de la pintura en rgb
+      const D = this.data, img = new Image();
+      img.onload = () => {
+        const m = document.createElement('canvas'); m.width = img.width; m.height = img.height;
+        const x = m.getContext('2d'); x.drawImage(img, 0, 0);
+        const id = x.getImageData(0, 0, m.width, m.height), px = id.data;
+        let alpha = false;
+        for (let i = 3; i < px.length; i += 4) if (px[i] < 255) { alpha = true; break; }
+        if (!alpha) { for (let i = 0; i < px.length; i += 4) { px[i + 3] = px[i]; px[i] = px[i + 1] = px[i + 2] = 255; } D.det = 0; }
+        x.putImageData(id, 0, 0);
+        D.sil = { m, x: d.silueta.x, y: d.silueta.y }; this.shade = null;
+      };
+      img.src = d.silueta.png;
+    }
+    this.name = name;
+    document.getElementById('constelStatus').textContent = name + ' · ' + stars.length + ' estrellas · ' + this.data.links.length + ' uniones' + (d.silueta ? ' · con silueta' : this.data.strokes.length ? ' · con figura' : '');
+  }
+  // suma un sprite con intensidad a (puede pasar de 1 en el destello)
+  add(img, x, y, w, h, a) {
+    const ctx = this.ctx;
+    for (; a > 0.002; a -= 1) { ctx.globalAlpha = Math.min(1, a); ctx.drawImage(img, x - w / 2, y - h / 2, w, h); }
+  }
+  star(x, y, amp, halo, k) {
+    const sc = k * (2.4 + 3 * amp), sh = k * (9 + 18 * amp) * halo;
+    this.add(STAR_DOT, x, y, 8 * sc, 8 * sc, amp);
+    this.add(STAR_DOT, x, y, 8 * sh, 8 * sh, 0.22 * amp);
+    this.add(STAR_SPIKE_H, x, y, 8 * 1.3 * sh, 8 * k, 0.18 * amp);
+    this.add(STAR_SPIKE_V, x, y, 8 * k, 8 * 1.3 * sh, 0.18 * amp);
+  }
+  // silueta rellena con borde suave; se rehace solo si cambia la geometría. Se arma a media resolución
+  // y se agranda al dibujarla: la de la imagen descompuesta, o polígonos + trazos engrosados.
+  shadow(p, px, esc) {
+    const S = this.c.width, D = this.data, key = [S, p.x, p.y, p.scale, p.rot, p.shadowCol, p.shadowSoft, p.figDetail, !!D.sil].join();
+    if (this.shade && this.shade.key === key) return this.shade.c;
+    const c = (this.shade && this.shade.c) || document.createElement('canvas');
+    c.width = c.height = S / 2;
+    const ctx = c.getContext('2d'), path = new Path2D(), blur = D.soft * p.shadowSoft * esc / 2;
+    if (D.sil) {
+      // la imagen de la silueta va al rectángulo x/y (en grados) con la misma posición, escala y giro
+      const { m, x: [x0, x1], y: [y0, y1] } = D.sil, o = px(x0, y1);
+      const u = px(x0 + (x1 - x0) / m.width, y1), v = px(x0, y1 - (y1 - y0) / m.height);
+      ctx.filter = 'blur(' + blur + 'px)';
+      ctx.setTransform((u[0] - o[0]) / 2, (u[1] - o[1]) / 2, (v[0] - o[0]) / 2, (v[1] - o[1]) / 2, o[0] / 2, o[1] / 2);
+      ctx.drawImage(m, 0, 0);
+      ctx.filter = 'none'; ctx.setTransform(1, 0, 0, 1, 0, 0);
+      // color de la sombra; con detalle, lo claro de la pintura más claro y las líneas oscuras se notan
+      const det = Math.min(1, D.det * p.figDetail), col = parseInt(p.shadowCol.slice(1), 16);
+      const tint = [col >> 16, col >> 8 & 255, col & 255], id = ctx.getImageData(0, 0, c.width, c.height), q = id.data;
+      for (let i = 0; i < q.length; i += 4) {
+        if (!q[i + 3]) continue;
+        const v = 1 - det + det * (0.35 + q[i] / 255);
+        q[i] = Math.min(255, tint[0] * v); q[i + 1] = Math.min(255, tint[1] * v); q[i + 2] = Math.min(255, tint[2] * v);
+      }
+      ctx.putImageData(id, 0, 0);
+      this.shade = { key, c };
+      return c;
+    }
+    ctx.setTransform(0.5, 0, 0, 0.5, 0, 0);
+    for (const pol of D.fills) pol.forEach((q, j) => { const [x, y] = px(q[0], q[1]); j ? path.lineTo(x, y) : path.moveTo(x, y); });
+    const limbs = new Path2D();
+    for (const tr of D.strokes) {
+      if (!Array.isArray(tr[0])) { const [x, y] = px(tr[0], tr[1]); path.moveTo(x + tr[2] * esc, y); path.arc(x, y, tr[2] * esc, 0, Math.PI * 2); continue; }
+      catmullRom(tr).forEach((q, j) => { const [x, y] = px(q[0], q[1]); j ? limbs.lineTo(x, y) : limbs.moveTo(x, y); });
+    }
+    ctx.filter = 'blur(' + blur + 'px)';
+    ctx.fillStyle = ctx.strokeStyle = p.shadowCol; ctx.lineWidth = 1.4 * esc; ctx.lineCap = ctx.lineJoin = 'round';
+    ctx.fill(path); ctx.stroke(limbs);
+    ctx.filter = 'none'; ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.shade = { key, c };
+    return c;
+  }
+  // trazo fino con resplandor: tres pasadas de ancho decreciente
+  glow(path, w, rgb, a) {
+    const ctx = this.ctx;
+    ctx.globalAlpha = 1; ctx.lineCap = ctx.lineJoin = 'round';
+    for (const [m, al] of [[5, 0.07], [2.4, 0.16], [1, 0.75]]) {
+      ctx.lineWidth = w * m; ctx.strokeStyle = 'rgba(' + rgb + ',' + Math.min(1, a * al) + ')'; ctx.stroke(path);
+    }
+  }
+  step(dt, now, au, p) {
+    const ctx = this.ctx, S = this.c.width, D = this.data;
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.clearRect(0, 0, S, S);
+    const t = tlNow(now);
+    if (!D) { this.info = ''; return; }
+    if (au.beat) this.pulse.hit(au.strength / 3 * au.react);
+    const pul = 1 + p.react * 0.6 * this.pulse.tick(dt, 6, au.atk);
+    ctx.globalCompositeOperation = 'lighter';
+
+    const k = S / 4096 * p.starSize * D.size, esc = D.escala * p.scale * S;
+    const cx = (D.centro[0] + p.x) * S, cy = (D.centro[1] + p.y) * S;
+    const cr = Math.cos(p.rot * Math.PI / 180), sr = Math.sin(p.rot * Math.PI / 180);
+    const px = (x, y) => [cx + (x * cr - y * sr) * esc, cy - (x * sr + y * cr) * esc];
+    const n = D.stars.length, tv = Math.max(0.01, p.travel), fps = 30;
+    // la sombra entra mientras se trazan las líneas (o con la última estrella si no hay líneas);
+    // el contorno, cuando la sombra ya casi está
+    const linesA = p.start + p.form, shA = p.lineAmt > 0 ? linesA + 0.6 * p.lines : linesA - 1, shB = shA + p.shadow;
+    const figA = shA + 0.75 * p.shadow, figB = figA + p.figure;
+    let fixed = 0;
+    D.stars.forEach((s, i) => {
+      const [x, y] = s.pos = px(s.x, s.y);
+      const dt2 = t - (p.start + i * p.form / Math.max(1, n - 1));
+      if (dt2 < -tv) return;
+      if (dt2 < 0) {
+        const ox = p.fromCenter ? S / 2 : x, oy = p.fromCenter ? S / 2 : y;
+        for (let sub = 0; sub < 3; sub++) { // desenfoque de movimiento
+          const u = (dt2 + tv - sub / fps / 3) / tv, m = 0.1 + 0.9 * ease5(u);
+          this.star(ox + (x - ox) * m, oy + (y - oy) * m, s.amp * (0.25 + 0.55 * ease3(u / 0.4)) / 3, 1, k);
+        }
+      } else {
+        fixed++;
+        const flash = 2.2 * Math.exp(-dt2 / 0.5), tw = 1 + 0.06 * Math.sin(2 * Math.PI * 0.6 * t + s.ph);
+        this.star(x, y, s.amp * (p.starAmt * tw * pul + flash), 1.25 + 0.8 * Math.exp(-dt2 / 0.8), k);
+      }
+    });
+
+    const sh = p.shadow > 0 ? ease3((t - shA) / p.shadow) : t >= shA ? 1 : 0;
+    if (sh > 0 && p.shadowAmt > 0 && (D.sil || D.fills.length || D.strokes.length)) {
+      ctx.globalAlpha = Math.min(1, sh * p.shadowAmt); ctx.drawImage(this.shadow(p, px, esc), 0, 0, S, S); ctx.globalAlpha = 1;
+    }
+    const f = p.figure > 0 ? ease3((t - figA) / p.figure) : t >= figA ? 1 : 0;
+    if (t >= linesA && D.links.length && p.lineAmt > 0) {
+      const path = new Path2D(), gap = 22 * k, step = Math.max(0.01, p.lines) / D.links.length;
+      D.links.forEach(([a, b], j) => {
+        const u = p.lines > 0 ? ease5((t - linesA - j * step) / (step * 2.5)) : 1;
+        if (u <= 0) return;
+        const vx = b.pos[0] - a.pos[0], vy = b.pos[1] - a.pos[1], L = Math.hypot(vx, vy) || 1;
+        const x0 = a.pos[0] + vx / L * gap, y0 = a.pos[1] + vy / L * gap;
+        const x1 = b.pos[0] - vx / L * gap, y1 = b.pos[1] - vy / L * gap;
+        path.moveTo(x0, y0); path.lineTo(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u);
+      });
+      this.glow(path, 2.5 * k, '166,209,255', p.lineAmt * (1 - 0.45 * f));
+    }
+    if (f > 0 && D.strokes.length) {
+      const path = new Path2D();
+      for (const tr of D.strokes) {
+        if (!Array.isArray(tr[0])) { const [x, y] = px(tr[0], tr[1]); path.moveTo(x + tr[2] * esc, y); path.arc(x, y, tr[2] * esc, 0, Math.PI * 2); continue; }
+        catmullRom(tr).forEach((q, j) => { const [x, y] = px(q[0], q[1]); j ? path.lineTo(x, y) : path.moveTo(x, y); });
+      }
+      const c = parseInt(p.figCol.slice(1), 16);
+      this.glow(path, 3 * k, (c >> 16) + ',' + (c >> 8 & 255) + ',' + (c & 255), p.figAmt * f);
+    }
+    ctx.globalAlpha = 1;
+    this.info = t < p.start - tv ? 'empieza en ' + fmtTime(p.start - tv - t)
+      : fixed < n ? 'estrellas ' + fixed + ' / ' + n
+      : t < Math.max(shB, figB) ? 'aparece la sombra' : 'completa';
   }
 }
 
@@ -1234,7 +1566,8 @@ const out = document.getElementById('out'), octx = out.getContext('2d');
 const particles = new Particles();
 const splats = new Splats(t => { document.getElementById('sceneStatus').textContent = t; });
 const video = new Video();
-const LAYERS = [['video', video], ['splats', splats], ['particles', particles]];
+const constel = new Constel();
+const LAYERS = [['video', video], ['splats', splats], ['particles', particles], ['constel', constel]];
 let S = 2048, recording = false, rec = null, recStart = 0, downloadUrl = null, guide = true;
 
 function setRes(n) {
@@ -1305,6 +1638,7 @@ function frame() {
     dotEl.style.background = now - A.lastBeat < 140 ? 'var(--g)' : 'var(--line)';
     const rem = splats.remaining(now), si = document.getElementById('seqInfo');
     si.textContent = splats.playing && rem !== null && splats.scenes.length > 1 ? 'Escena ' + (splats.idx() + 1) + '/' + splats.scenes.length + ' · cambia en ' + Math.ceil(rem) + ' s' : '';
+    if (P.constel.on || video.seq) $('tlInfo').textContent = fmtClock(tlNow(now)) + (P.constel.on && constel.info ? ' · ' + constel.info : '');
     if (recording) { const t = Math.floor((now - recStart) / 1000); recBtn.textContent = 'Detener · ' + Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
   }
 }
@@ -1442,7 +1776,7 @@ async function startRender() {
   splats.m.musAvg = -1;
   A.hist = []; A.lastBeat = -1e9; A.lastPulse = -1e9; A.lastManual = -1e9; A.lastT = undefined; A.sm = null; A.beats = 0;
   if (P.splats.on && splats.scenes.length) { splats.playing = splats.scenes.length > 1; splats.pick(splats.scenes[0], true); }
-  if (video.has) video.el.pause();
+  if (video.isClip) video.el.pause();
   $('renderGo').disabled = true; $('renderStop').disabled = false; $('rec').disabled = true;
   const t0 = performance.now();
   let aPos = 0, i = 0;
@@ -1451,7 +1785,8 @@ async function startRender() {
       const tms = i * 1000 / fps;
       while (P.splats.on && splats.busy()) { splats.idleTick(P.splats); await sleep(10); if (RENDER.cancel) break; }
       if (P.splats.on) await splats.syncSorts();
-      if (P.video.on && video.has) await seekVideo(tms / 1000);
+      if (P.video.on && video.isClip) await seekVideo(tms / 1000);
+      if (P.video.on && video.seq) await video.seqFrame(tms / 1000);
       drawFrame(tms, 1 / fps);
       if (png) {
         const p = savePng(dir, 'cuadro_' + String(i).padStart(6, '0') + '.png').catch(e => { encErr = e; }).finally(() => pend.delete(p));
@@ -1494,7 +1829,7 @@ async function startRender() {
     splats.playing = wasPlaying; setPlaying(wasPlaying);
     useDemo();
     if (prevSource !== 'demo') $('audioStatus').textContent = 'Render terminado: vuelve a elegir la fuente de audio';
-    if (video.has) video.el.play();
+    if (video.isClip) video.el.play();
     last = performance.now();
   }
 }
@@ -1572,6 +1907,7 @@ function onbOpen() { const k = ONB.findIndex(s => !s.ok()); onbCur = k < 0 ? ONB
 function onbToggle() { const el = $('onb'); onbShow(el.hidden || el.classList.contains('min') ? 'open' : 'min'); }
 setInterval(onbTick, 400);
 
+const fmtClock = sec => Math.floor(sec / 60) + ':' + String(Math.floor(sec % 60)).padStart(2, '0');
 function fmtTime(sec) { sec = Math.max(0, Math.round(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s2 = sec % 60; return (h ? h + 'h ' : '') + m + 'm ' + String(s2).padStart(2, '0') + 's'; }
 
 // ---------- Proyectos ----------
@@ -1586,6 +1922,7 @@ function prjSnapshot() {
     version: 1, nombre: PRJ.name, guardado: new Date().toISOString(), ajustes: P,
     escenas: splats.scenes.filter(sc => sc.archivo).map(sc => ({ archivo: sc.archivo, label: sc.label, dur: sc.dur, ajustes: sc.aj })),
     musica: PRJ.music ? PRJ.music.name : null, video: PRJ.video ? PRJ.video.name : null,
+    constelacion: PRJ.constel ? PRJ.constel.name : null,
     render: { fmt: $('renderFmt').value, res: $('renderRes').value, fps: $('renderFps').value },
     secuencia: { loop: splats.loop }
   };
@@ -1645,6 +1982,7 @@ async function prjLoad(name) {
   };
   if (d.musica) { const f = await get('musica', d.musica); if (f) { PRJ.music = f; await loadSong(f); } }
   if (d.video) { const f = await get('video', d.video); if (f) { PRJ.video = f; video.load(f, true); } }
+  if (d.constelacion) { const f = await get('constelacion', d.constelacion); if (f) try { constel.setData(JSON.parse(await f.text()), f.name); PRJ.constel = f; } catch (e) {} }
   PRJ.loading = false; prjUI('Proyecto abierto: proyectos/' + name + '/');
   return true;
 }
@@ -1671,7 +2009,7 @@ async function prjCreate() {
   if (PRJ.list.includes(name)) { st.textContent = 'Ya existe un proyecto con ese nombre: ábrelo de la lista.'; return; }
   if (PRJ.name) {
     // ya hay uno abierto: el nuevo arranca vacío, con los ajustes actuales
-    const snap = Object.assign(prjSnapshot(), { nombre: name, escenas: [], musica: null, video: null });
+    const snap = Object.assign(prjSnapshot(), { nombre: name, escenas: [], musica: null, video: null, constelacion: null });
     try { await prjPut(name, ['proyecto.json'], JSON.stringify(snap, null, 2)); } catch (e) { st.textContent = 'No se pudo crear (' + e.message + ')'; return; }
     return prjSwitch(name);
   }
@@ -1683,6 +2021,7 @@ async function prjCreate() {
     splats.scenes.forEach(sc => { if (sc.file) prjUpload('escenas', sc.file); });
     if (PRJ.music) prjUpload('musica', PRJ.music);
     if (PRJ.video) prjUpload('video', PRJ.video);
+    if (PRJ.constel) prjUpload('constelacion', PRJ.constel);
     prjForgetOld();
   }
 }
@@ -1724,6 +2063,31 @@ document.querySelectorAll('[data-src]').forEach(b => b.onclick = () => {
 $('audioFile').onchange = e => { const f = e.target.files[0]; if (f) { onAudioFile(f); setMusic(f); } e.target.value = ''; };
 $('pickVideo').onclick = () => $('videoFile').click();
 $('videoFile').onchange = e => { const f = e.target.files[0]; if (f) setVideo(f); e.target.value = ''; };
+$('pickSeq').onclick = () => $('seqDir').click();
+$('seqDir').onchange = e => { if (!video.loadSeq(e.target.files)) $('videoStatus').textContent = 'La carpeta no tiene imágenes JPG / PNG'; e.target.value = ''; };
+// la constelación elegida se copia al proyecto; Orión es el ejemplo del repo
+async function setConstel(f) {
+  try { constel.setData(JSON.parse(await f.text()), f.name); }
+  catch (e) { $('constelStatus').textContent = 'No se pudo leer ' + f.name + ' (' + e.message + ')'; return; }
+  const old = PRJ.constel; PRJ.constel = f;
+  if (old && old.name !== f.name) prjDelete('constelacion', old.name);
+  prjUpload('constelacion', f);
+  if (!P.constel.on) set('constel', 'on', true);
+}
+async function constelOrion(byUser) {
+  let d = null;
+  for (const f of ['orion-imagen.json', 'orion.json']) { try { const r = await fetch('constelacion/' + f); if (r.ok) { d = await r.json(); break; } } catch (e) {} }
+  if (!d) { $('constelStatus').textContent = 'No se encontró constelacion/orion.json: abre la app con iniciar.command'; return; }
+  constel.setData(d, 'Orión');
+  if (!byUser) return;
+  if (PRJ.constel) { prjDelete('constelacion', PRJ.constel.name); PRJ.constel = null; prjDirty(); }
+  if (!P.constel.on) set('constel', 'on', true);
+}
+$('constelPick').onclick = () => $('constelFile').click();
+$('constelFile').onchange = e => { const f = e.target.files[0]; if (f) setConstel(f); e.target.value = ''; };
+$('constelOrion').onclick = () => constelOrion(true);
+$('tlZero').onclick = () => tlSeek(0);
+$('tlGo').onclick = () => tlSeek(P.constel.start - 3);
 $('pickScene').onclick = () => $('sceneFile').click();
 function addSceneFiles(files) {
   let first = null;
@@ -1805,6 +2169,7 @@ document.addEventListener('keydown', e => {
     case '1': toggleLayer('particles'); break;
     case '2': toggleLayer('splats'); break;
     case '3': toggleLayer('video'); break;
+    case '4': toggleLayer('constel'); break;
     case 'n': splats.pickNext(1); break;
     case 'b': splats.pickNext(-1); break;
     case 'd': invertSpin(); break;
@@ -1821,7 +2186,7 @@ buildControls();
 setRes(2048);
 listMics();
 renderScenes();
-prjStart();
+constelOrion(false).then(prjStart);
 syncUI();
 setSource('demo', 'Demo a ' + P.audio.bpm + ' BPM');
 A.demoNext = performance.now() + 400;
