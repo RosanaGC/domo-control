@@ -140,6 +140,13 @@ vecinos), se muestra el anterior en su lugar.
 | `G` | mostrar / ocultar guía |
 | `H` | guía de proyecto: abrir / minimizar |
 
+## Grabar en vivo
+
+**Grabar (R)** graba lo que se ve en tiempo real, con el audio que esté sonando (Mic o Archivo): sirve para
+mostrar y validar con el grupo. A 1024 y 2048 sale en **MP4** (H.264 + AAC), que se abre en cualquier
+teléfono o computadora; a 4096 sale en WebM (Chrome no graba H.264 a esa resolución). Si el equipo no da
+abasto puede tener tirones: graba a 1024 para que vaya fluido. Para entregar al planetario, usa el render.
+
 ## Render a video
 
 Para entregar al planetario, **Renderizar canción** genera el video cuadro por cuadro usando una
